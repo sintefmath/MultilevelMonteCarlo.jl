@@ -1,0 +1,37 @@
+name: CI
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  test:
+    name: Julia ${{ matrix.version }} - ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        version: ['1.10', '1']
+        os: [ubuntu-latest]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: julia-actions/setup-julia@v2
+        with:
+          version: ${{ matrix.version }}
+      - uses: julia-actions/cache@v2
+      - uses: julia-actions/julia-buildpkg@v1
+      - name: Run tests
+        run: |
+          julia --project=. -e '
+            using Pkg
+            Pkg.instantiate()
+            # Run test files
+            for f in readdir("test"; join=true)
+              endswith(f, ".jl") || continue
+              println("\n" * "="^60)
+              println("Running: ", f)
+              println("="^60)
+              include(f)
+            end
+          '

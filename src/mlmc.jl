@@ -501,6 +501,107 @@ function evaluate_monte_carlo(
     return get_mean(acc)
 end
 
+"""
+    mlmc_estimate_vector_qoi(levels, qoi_function, samples_per_level, draw_parameters;
+                              parallel=false) -> Vector{Float64}
+
+MLMC estimator for a single vector-valued QoI function.  The function must
+return a vector of the **same length** for every evaluation.  Statistics are
+accumulated online per component using the standard telescoping sum.
+
+# Arguments
+- `levels`: `[L₁, …, Lₗ]` — model evaluators, one per fidelity level.
+- `qoi_function`: `q(model_output) -> AbstractVector` — a single QoI that
+  returns a fixed-length vector.
+- `samples_per_level`: `[N₁, …, Nₗ]` — sample counts at each level.
+- `draw_parameters`: `() -> params`.
+
+# Keyword Arguments
+- `parallel::Bool = false`: Use threading within each level.
+
+# Returns
+`Vector{Float64}` of the same length as `qoi_function`'s output — the
+component-wise MLMC mean estimate.
+"""
+function mlmc_estimate_vector_qoi(
+    levels::AbstractVector{<:Function},
+    qoi_function::Function,
+    samples_per_level::AbstractVector{<:Integer},
+    draw_parameters::Function;
+    parallel::Bool = false,
+)
+    n_levels = length(levels)
+    @assert length(samples_per_level) == n_levels
+
+    # Determine output vector length from a probe evaluation
+    k = length(qoi_function(levels[1](draw_parameters())))
+
+    estimates = zeros(Float64, k)
+
+    # Level 1: plain expectations
+    accs = accumulate_vector_samples(samples_per_level[1], k; parallel) do accs
+        qval = qoi_function(levels[1](draw_parameters()))
+        for j in 1:k
+            update!(accs[j], qval[j])
+        end
+    end
+    for j in 1:k
+        estimates[j] = get_mean(accs[j])
+    end
+
+    # Levels 2…L: corrections
+    for lvl in 2:n_levels
+        accs = accumulate_vector_samples(samples_per_level[lvl], k; parallel) do accs
+            params = draw_parameters()
+            qf = qoi_function(levels[lvl](params))
+            qc = qoi_function(levels[lvl - 1](params))
+            for j in 1:k
+                update!(accs[j], qf[j] - qc[j])
+            end
+        end
+        for j in 1:k
+            estimates[j] += get_mean(accs[j])
+        end
+    end
+
+    return estimates
+end
+
+"""
+    evaluate_monte_carlo_vector_qoi(n_samples, draw_parameters, level, qoi_function;
+                                     parallel=false) -> Vector{Float64}
+
+Standard (single-level) Monte Carlo estimator for a single vector-valued QoI.
+
+# Arguments
+- `n_samples`: Number of samples.
+- `draw_parameters`: `() -> params`.
+- `level`: Model evaluator `L(params) -> model_output`.
+- `qoi_function`: `q(model_output) -> AbstractVector` — must return a
+  fixed-length vector.
+
+# Returns
+`Vector{Float64}` — the component-wise MC mean estimate.
+"""
+function evaluate_monte_carlo_vector_qoi(
+    n_samples::Integer,
+    draw_parameters::Function,
+    level::Function,
+    qoi_function::Function;
+    parallel::Bool = false,
+)
+    # Determine output vector length from a probe evaluation
+    k = length(qoi_function(level(draw_parameters())))
+
+    accs = accumulate_vector_samples(n_samples, k; parallel) do accs
+        qval = qoi_function(level(draw_parameters()))
+        for j in 1:k
+            update!(accs[j], qval[j])
+        end
+    end
+    return [get_mean(accs[j]) for j in 1:k]
+end
+
 #= ── Sample collection ──────────────────────────────────────────────────── =#
 
 """
