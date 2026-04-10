@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><title>Rank Histograms · MultilevelMonteCarlo.jl</title><meta name="title" content="Rank Histograms · MultilevelMonteCarlo.jl"/><meta property="og:title" content="Rank Histograms · MultilevelMonteCarlo.jl"/><meta property="twitter:title" content="Rank Histograms · MultilevelMonteCarlo.jl"/><meta name="description" content="Documentation for MultilevelMonteCarlo.jl."/><meta property="og:description" content="Documentation for MultilevelMonteCarlo.jl."/><meta property="twitter:description" content="Documentation for MultilevelMonteCarlo.jl."/><meta property="og:url" content="https://sintefmath.github.io/MultilevelMonteCarlo.jl/examples/rank_histograms/"/><meta property="twitter:url" content="https://sintefmath.github.io/MultilevelMonteCarlo.jl/examples/rank_histograms/"/><link rel="canonical" href="https://sintefmath.github.io/MultilevelMonteCarlo.jl/examples/rank_histograms/"/><script data-outdated-warner src="../../assets/warner.js"></script><link href="https://cdnjs.cloudflare.com/ajax/libs/lato-font/3.0.0/css/lato-font.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/juliamono/0.050/juliamono.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/fontawesome.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/solid.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/brands.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.8/katex.min.css" rel="stylesheet" type="text/css"/><script>documenterBaseURL="../.."</script><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.6/require.min.js" data-main="../../assets/documenter.js"></script><script src="../../search_index.js"></script><script src="../../siteinfo.js"></script><script src="../../../versions.js"></script><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/catppuccin-mocha.css" data-theme-name="catppuccin-mocha"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/catppuccin-macchiato.css" data-theme-name="catppuccin-macchiato"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/catppuccin-frappe.css" data-theme-name="catppuccin-frappe"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/catppuccin-latte.css" data-theme-name="catppuccin-latte"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/documenter-dark.css" data-theme-name="documenter-dark" data-theme-primary-dark/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/documenter-light.css" data-theme-name="documenter-light" data-theme-primary/><script src="../../assets/themeswap.js"></script></head><body><div id="documenter"><nav class="docs-sidebar"><div class="docs-package-name"><span class="docs-autofit"><a href="../../">MultilevelMonteCarlo.jl</a></span></div><button class="docs-search-query input is-rounded is-small is-clickable my-2 mx-auto py-1 px-2" id="documenter-search-query">Search docs (Ctrl + /)</button><ul class="docs-menu"><li><a class="tocitem" href="../../">Home</a></li><li><span class="tocitem">Examples</span><ul><li><a class="tocitem" href="../projectile/">Projectile Motion</a></li><li><a class="tocitem" href="../sample_storage/">Sample Storage &amp; NetCDF</a></li><li><a class="tocitem" href="../pdf_estimation/">PDF &amp; CDF Estimation</a></li><li class="is-active"><a class="tocitem" href>Rank Histograms</a><ul class="internal"><li><a class="tocitem" href="#Model-setup"><span>Model setup</span></a></li><li><a class="tocitem" href="#Gregory-rank-histogram"><span>Gregory rank histogram</span></a></li><li><a class="tocitem" href="#KDE-PIT-histogram"><span>KDE PIT histogram</span></a></li><li><a class="tocitem" href="#MaxEnt-PIT-histogram"><span>MaxEnt PIT histogram</span></a></li><li><a class="tocitem" href="#Side-by-side-comparison"><span>Side-by-side comparison</span></a></li><li><a class="tocitem" href="#Gregory-resample-distribution"><span>Gregory resample distribution</span></a></li></ul></li><li><a class="tocitem" href="../multivariate_rank/">Multivariate Rank Histogram</a></li><li><a class="tocitem" href="../projectile_wind/">Projectile in Wind</a></li></ul></li><li><a class="tocitem" href="../../api/">API Reference</a></li></ul><div class="docs-version-selector field has-addons"><div class="control"><span class="docs-label button is-static is-size-7">Version</span></div><div class="docs-selector control is-expanded"><div class="select is-fullwidth is-size-7"><select id="documenter-version-selector"></select></div></div></div></nav><div class="docs-main"><header class="docs-navbar"><a class="docs-sidebar-button docs-navbar-link fa-solid fa-bars is-hidden-desktop" id="documenter-sidebar-button" href="#"></a><nav class="breadcrumb"><ul class="is-hidden-mobile"><li><a class="is-disabled">Examples</a></li><li class="is-active"><a href>Rank Histograms</a></li></ul><ul class="is-hidden-tablet"><li class="is-active"><a href>Rank Histograms</a></li></ul></nav><div class="docs-right"><a class="docs-navbar-link" href="https://github.com/sintefmath/MultilevelMonteCarlo.jl" title="View the repository on GitHub"><span class="docs-icon fa-brands"></span><span class="docs-label is-hidden-touch">GitHub</span></a><a class="docs-navbar-link" href="https://github.com/sintefmath/MultilevelMonteCarlo.jl/blob/main/docs/src/examples/rank_histograms.md" title="Edit source on GitHub"><span class="docs-icon fa-solid"></span></a><a class="docs-settings-button docs-navbar-link fa-solid fa-gear" id="documenter-settings-button" href="#" title="Settings"></a><a class="docs-article-toggle-button fa-solid fa-chevron-up" id="documenter-article-toggle-button" href="javascript:;" title="Collapse all docstrings"></a></div></header><article class="content" id="documenter-page"><h1 id="Rank-Histograms"><a class="docs-heading-anchor" href="#Rank-Histograms">Rank Histograms</a><a id="Rank-Histograms-1"></a><a class="docs-heading-anchor-permalink" href="#Rank-Histograms" title="Permalink"></a></h1><p>Rank histograms and probability-integral-transform (PIT) histograms are diagnostic tools for checking whether an ensemble correctly represents the true distribution.  A well-calibrated ensemble produces a <strong>uniform</strong> histogram.</p><p>This example demonstrates three approaches:</p><ol><li><strong>Gregory resampling</strong> — resample via the MLMC inverse-CDF, then compute ranks.</li><li><strong>KDE CDF</strong> — estimate the CDF with kernel density estimation, then evaluate at truth.</li><li><strong>MaxEnt CDF</strong> — estimate the CDF with maximum entropy, then evaluate at truth.</li></ol><h2 id="Model-setup"><a class="docs-heading-anchor" href="#Model-setup">Model setup</a><a id="Model-setup-1"></a><a class="docs-heading-anchor-permalink" href="#Model-setup" title="Permalink"></a></h2><p>We use a simple Gaussian model <span>$X \sim \mathcal{N}(2,\, 0.5^2)$</span> with three levels that add decreasing amounts of noise.</p><pre><code class="language-julia hljs">using MultilevelMonteCarlo
+using CairoMakie
+using Statistics
+using Random
+Random.seed!(42)
+
+μ_true = 2.0
+σ_true = 0.5
+
+levels = Function[
+    params -&gt; params + 0.2 * randn(),    # coarse — added noise σ = 0.2
+    params -&gt; params + 0.02 * randn(),   # medium — added noise σ = 0.02
+    params -&gt; Float64(params),           # fine   — exact
+]
+
+draw_parameters() = μ_true + σ_true * randn()
+qoi_function = identity
+
+samples_per_level = [2000, 1000, 200]</code></pre><h2 id="Gregory-rank-histogram"><a class="docs-heading-anchor" href="#Gregory-rank-histogram">Gregory rank histogram</a><a id="Gregory-rank-histogram-1"></a><a class="docs-heading-anchor-permalink" href="#Gregory-rank-histogram" title="Permalink"></a></h2><p>We run <a href="../../api/#MultilevelMonteCarlo.rank_histogram_gregory"><code>rank_histogram_gregory</code></a> to collect ranks.  Each iteration draws a truth sample from the finest level, builds a fresh MLMC ensemble, Gregory-resamples, and records where the truth falls in the sorted ensemble.</p><pre><code class="language-julia hljs">n_rank = 300
+n_resamples = 500
+
+ranks = rank_histogram_gregory(levels, qoi_function, draw_parameters,
+                               n_rank, samples_per_level;
+                               number_of_resamples = n_resamples)</code></pre><p>A flat histogram indicates correct calibration:</p><pre><code class="language-julia hljs">fig = Figure(size = (700, 400))
+ax = Axis(fig[1, 1];
+    title  = &quot;Gregory rank histogram&quot;,
+    xlabel = &quot;Rank&quot;,
+    ylabel = &quot;Count&quot;,
+)
+n_bins = 20
+hist!(ax, Float64.(ranks); bins = n_bins, color = :steelblue, strokewidth = 1)
+expected_per_bin = n_rank / n_bins
+hlines!(ax, [expected_per_bin]; color = :red, linestyle = :dash,
+        label = &quot;Expected (uniform)&quot;)
+axislegend(ax; position = :rt)</code></pre><p><img src="../rank_gregory.png" alt="Gregory rank histogram"/></p><h2 id="KDE-PIT-histogram"><a class="docs-heading-anchor" href="#KDE-PIT-histogram">KDE PIT histogram</a><a id="KDE-PIT-histogram-1"></a><a class="docs-heading-anchor-permalink" href="#KDE-PIT-histogram" title="Permalink"></a></h2><p><a href="../../api/#MultilevelMonteCarlo.rank_histogram_cdf"><code>rank_histogram_cdf</code></a> with <a href="../../api/#MultilevelMonteCarlo.estimate_cdf_mlmc_kernel_density"><code>estimate_cdf_mlmc_kernel_density</code></a> produces PIT values that should be <span>$\mathrm{Uniform}(0,1)$</span> if the KDE CDF is well calibrated.</p><pre><code class="language-julia hljs">pit_kde = rank_histogram_cdf(levels, qoi_function, draw_parameters,
+                             n_rank, samples_per_level,
+                             estimate_cdf_mlmc_kernel_density)</code></pre><pre><code class="language-julia hljs">fig = Figure(size = (700, 400))
+ax = Axis(fig[1, 1];
+    title  = &quot;PIT histogram — KDE CDF&quot;,
+    xlabel = &quot;PIT value&quot;,
+    ylabel = &quot;Count&quot;,
+)
+hist!(ax, pit_kde; bins = n_bins, color = :teal, strokewidth = 1)
+expected_per_bin_cdf = n_rank / n_bins
+hlines!(ax, [expected_per_bin_cdf]; color = :red, linestyle = :dash,
+        label = &quot;Expected (uniform)&quot;)
+axislegend(ax; position = :rt)</code></pre><p><img src="../pit_kde.png" alt="KDE PIT histogram"/></p><h2 id="MaxEnt-PIT-histogram"><a class="docs-heading-anchor" href="#MaxEnt-PIT-histogram">MaxEnt PIT histogram</a><a id="MaxEnt-PIT-histogram-1"></a><a class="docs-heading-anchor-permalink" href="#MaxEnt-PIT-histogram" title="Permalink"></a></h2><p>Using <a href="../../api/#MultilevelMonteCarlo.estimate_cdf_maxent"><code>estimate_cdf_maxent</code></a> with <span>$R = 6$</span> Legendre moments:</p><pre><code class="language-julia hljs">maxent_cdf(s, i) = first(estimate_cdf_maxent(s, i; R = 4))
+
+pit_maxent = rank_histogram_cdf(levels, qoi_function, draw_parameters,
+                                n_rank, samples_per_level,
+                                maxent_cdf)</code></pre><pre><code class="language-julia hljs">fig = Figure(size = (700, 400))
+ax = Axis(fig[1, 1];
+    title  = &quot;PIT histogram — MaxEnt CDF&quot;,
+    xlabel = &quot;PIT value&quot;,
+    ylabel = &quot;Count&quot;,
+)
+hist!(ax, pit_maxent; bins = n_bins, color = :darkorange, strokewidth = 1)
+hlines!(ax, [expected_per_bin_cdf]; color = :red, linestyle = :dash,
+        label = &quot;Expected (uniform)&quot;)
+axislegend(ax; position = :rt)</code></pre><p><img src="../pit_maxent.png" alt="MaxEnt PIT histogram"/></p><h2 id="Side-by-side-comparison"><a class="docs-heading-anchor" href="#Side-by-side-comparison">Side-by-side comparison</a><a id="Side-by-side-comparison-1"></a><a class="docs-heading-anchor-permalink" href="#Side-by-side-comparison" title="Permalink"></a></h2><pre><code class="language-julia hljs">fig = Figure(size = (1200, 400))
+
+ax1 = Axis(fig[1, 1]; title = &quot;Gregory ranks&quot;, xlabel = &quot;Rank&quot;, ylabel = &quot;Count&quot;)
+hist!(ax1, Float64.(ranks); bins = n_bins, color = :steelblue, strokewidth = 1)
+hlines!(ax1, [n_rank / n_bins]; color = :red, linestyle = :dash)
+
+ax2 = Axis(fig[1, 2]; title = &quot;KDE PIT&quot;, xlabel = &quot;PIT value&quot;, ylabel = &quot;Count&quot;)
+hist!(ax2, pit_kde; bins = n_bins, color = :teal, strokewidth = 1)
+hlines!(ax2, [n_rank / n_bins]; color = :red, linestyle = :dash)
+
+ax3 = Axis(fig[1, 3]; title = &quot;MaxEnt PIT&quot;, xlabel = &quot;PIT value&quot;, ylabel = &quot;Count&quot;)
+hist!(ax3, pit_maxent; bins = n_bins, color = :darkorange, strokewidth = 1)
+hlines!(ax3, [n_rank / n_bins]; color = :red, linestyle = :dash)</code></pre><p><img src="../rank_comparison.png" alt="Rank histogram comparison"/></p><h2 id="Gregory-resample-distribution"><a class="docs-heading-anchor" href="#Gregory-resample-distribution">Gregory resample distribution</a><a id="Gregory-resample-distribution-1"></a><a class="docs-heading-anchor-permalink" href="#Gregory-resample-distribution" title="Permalink"></a></h2><p>We can also inspect the distribution of Gregory resamples directly. Here we draw one large MLMC ensemble and resample from it:</p><pre><code class="language-julia hljs">large_samples = mlmc_sample(levels, Function[qoi_function],
+                            [4000, 2000, 500], draw_parameters)
+resampled = ml_gregory_resample(large_samples, 1, 10_000)
+
+fig = Figure(size = (700, 400))
+ax = Axis(fig[1, 1]; title = &quot;Gregory resample distribution&quot;,
+          xlabel = &quot;x&quot;, ylabel = &quot;Density&quot;)
+hist!(ax, resampled; bins = 60, normalization = :pdf,
+      color = (:steelblue, 0.6), strokewidth = 1, label = &quot;Gregory resamples&quot;)
+
+# Overlay true N(μ, σ²) density
+xs = range(μ_true - 4σ_true, μ_true + 4σ_true; length = 200)
+true_pdf = @. exp(-0.5 * ((xs - μ_true) / σ_true)^2) / (σ_true * sqrt(2π))
+lines!(ax, xs, true_pdf; color = :red, linewidth = 2, label = &quot;True N(2, 0.25)&quot;)
+axislegend(ax; position = :rt)</code></pre><p><img src="../gregory_distribution.png" alt="Gregory resample distribution"/></p></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../pdf_estimation/">« PDF &amp; CDF Estimation</a><a class="docs-footer-nextpage" href="../multivariate_rank/">Multivariate Rank Histogram »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="catppuccin-latte">catppuccin-latte</option><option value="catppuccin-frappe">catppuccin-frappe</option><option value="catppuccin-macchiato">catppuccin-macchiato</option><option value="catppuccin-mocha">catppuccin-mocha</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.17.0 on <span class="colophon-date" title="Friday 10 April 2026 11:26">Friday 10 April 2026</span>. Using Julia version 1.12.5.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>

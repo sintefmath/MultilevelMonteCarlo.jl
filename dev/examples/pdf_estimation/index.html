@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><title>PDF &amp; CDF Estimation · MultilevelMonteCarlo.jl</title><meta name="title" content="PDF &amp; CDF Estimation · MultilevelMonteCarlo.jl"/><meta property="og:title" content="PDF &amp; CDF Estimation · MultilevelMonteCarlo.jl"/><meta property="twitter:title" content="PDF &amp; CDF Estimation · MultilevelMonteCarlo.jl"/><meta name="description" content="Documentation for MultilevelMonteCarlo.jl."/><meta property="og:description" content="Documentation for MultilevelMonteCarlo.jl."/><meta property="twitter:description" content="Documentation for MultilevelMonteCarlo.jl."/><meta property="og:url" content="https://sintefmath.github.io/MultilevelMonteCarlo.jl/examples/pdf_estimation/"/><meta property="twitter:url" content="https://sintefmath.github.io/MultilevelMonteCarlo.jl/examples/pdf_estimation/"/><link rel="canonical" href="https://sintefmath.github.io/MultilevelMonteCarlo.jl/examples/pdf_estimation/"/><script data-outdated-warner src="../../assets/warner.js"></script><link href="https://cdnjs.cloudflare.com/ajax/libs/lato-font/3.0.0/css/lato-font.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/juliamono/0.050/juliamono.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/fontawesome.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/solid.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/brands.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.8/katex.min.css" rel="stylesheet" type="text/css"/><script>documenterBaseURL="../.."</script><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.6/require.min.js" data-main="../../assets/documenter.js"></script><script src="../../search_index.js"></script><script src="../../siteinfo.js"></script><script src="../../../versions.js"></script><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/catppuccin-mocha.css" data-theme-name="catppuccin-mocha"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/catppuccin-macchiato.css" data-theme-name="catppuccin-macchiato"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/catppuccin-frappe.css" data-theme-name="catppuccin-frappe"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/catppuccin-latte.css" data-theme-name="catppuccin-latte"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/documenter-dark.css" data-theme-name="documenter-dark" data-theme-primary-dark/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/documenter-light.css" data-theme-name="documenter-light" data-theme-primary/><script src="../../assets/themeswap.js"></script></head><body><div id="documenter"><nav class="docs-sidebar"><div class="docs-package-name"><span class="docs-autofit"><a href="../../">MultilevelMonteCarlo.jl</a></span></div><button class="docs-search-query input is-rounded is-small is-clickable my-2 mx-auto py-1 px-2" id="documenter-search-query">Search docs (Ctrl + /)</button><ul class="docs-menu"><li><a class="tocitem" href="../../">Home</a></li><li><span class="tocitem">Examples</span><ul><li><a class="tocitem" href="../projectile/">Projectile Motion</a></li><li><a class="tocitem" href="../sample_storage/">Sample Storage &amp; NetCDF</a></li><li class="is-active"><a class="tocitem" href>PDF &amp; CDF Estimation</a><ul class="internal"><li><a class="tocitem" href="#Setup:-Projectile-Model-and-MLMC-Samples"><span>Setup: Projectile Model and MLMC Samples</span></a></li><li><a class="tocitem" href="#Kernel-Density-Estimation-(KDE)"><span>Kernel Density Estimation (KDE)</span></a></li><li><a class="tocitem" href="#Maximum-Entropy-Method"><span>Maximum Entropy Method</span></a></li><li><a class="tocitem" href="#Comparison:-KDE-vs-MaxEnt"><span>Comparison: KDE vs MaxEnt</span></a></li></ul></li><li><a class="tocitem" href="../rank_histograms/">Rank Histograms</a></li><li><a class="tocitem" href="../multivariate_rank/">Multivariate Rank Histogram</a></li><li><a class="tocitem" href="../projectile_wind/">Projectile in Wind</a></li></ul></li><li><a class="tocitem" href="../../api/">API Reference</a></li></ul><div class="docs-version-selector field has-addons"><div class="control"><span class="docs-label button is-static is-size-7">Version</span></div><div class="docs-selector control is-expanded"><div class="select is-fullwidth is-size-7"><select id="documenter-version-selector"></select></div></div></div></nav><div class="docs-main"><header class="docs-navbar"><a class="docs-sidebar-button docs-navbar-link fa-solid fa-bars is-hidden-desktop" id="documenter-sidebar-button" href="#"></a><nav class="breadcrumb"><ul class="is-hidden-mobile"><li><a class="is-disabled">Examples</a></li><li class="is-active"><a href>PDF &amp; CDF Estimation</a></li></ul><ul class="is-hidden-tablet"><li class="is-active"><a href>PDF &amp; CDF Estimation</a></li></ul></nav><div class="docs-right"><a class="docs-navbar-link" href="https://github.com/sintefmath/MultilevelMonteCarlo.jl" title="View the repository on GitHub"><span class="docs-icon fa-brands"></span><span class="docs-label is-hidden-touch">GitHub</span></a><a class="docs-navbar-link" href="https://github.com/sintefmath/MultilevelMonteCarlo.jl/blob/main/docs/src/examples/pdf_estimation.md" title="Edit source on GitHub"><span class="docs-icon fa-solid"></span></a><a class="docs-settings-button docs-navbar-link fa-solid fa-gear" id="documenter-settings-button" href="#" title="Settings"></a><a class="docs-article-toggle-button fa-solid fa-chevron-up" id="documenter-article-toggle-button" href="javascript:;" title="Collapse all docstrings"></a></div></header><article class="content" id="documenter-page"><h1 id="PDF-and-CDF-Estimation"><a class="docs-heading-anchor" href="#PDF-and-CDF-Estimation">PDF &amp; CDF Estimation</a><a id="PDF-and-CDF-Estimation-1"></a><a class="docs-heading-anchor-permalink" href="#PDF-and-CDF-Estimation" title="Permalink"></a></h1><p>This example demonstrates how to estimate probability density functions (PDFs) and cumulative distribution functions (CDFs) from MLMC samples using kernel density estimation and the maximum entropy method.</p><p>We use the projectile motion model with uncertain parameters and estimate the distribution of the <strong>landing distance</strong>.</p><h2 id="Setup:-Projectile-Model-and-MLMC-Samples"><a class="docs-heading-anchor" href="#Setup:-Projectile-Model-and-MLMC-Samples">Setup: Projectile Model and MLMC Samples</a><a id="Setup:-Projectile-Model-and-MLMC-Samples-1"></a><a class="docs-heading-anchor-permalink" href="#Setup:-Projectile-Model-and-MLMC-Samples" title="Permalink"></a></h2><pre><code class="language-julia hljs">using Parameters
+using Distributions
+using MultilevelMonteCarlo
+using Statistics
+using Random
+
+Random.seed!(42)
+
+@with_kw struct Drag{RhoType, CdType, AreaType}
+    ρ::RhoType = 1.225; C_d::CdType = 0.47; A::AreaType = 0.01
+end
+(d::Drag)(v) = 0.5 * d.ρ * d.C_d * d.A * v^2
+
+@with_kw struct ProjectileParams{H,V,A,M,D}
+    h0::H; v0::V; angle::A; mass::M; drag::D
+end
+
+import Random: rand
+function rand(p::ProjectileParams)
+    ProjectileParams(
+        h0    = p.h0    isa Real ? p.h0    : rand(p.h0),
+        v0    = p.v0    isa Real ? p.v0    : rand(p.v0),
+        angle = p.angle isa Real ? p.angle : rand(p.angle),
+        mass  = p.mass  isa Real ? p.mass  : rand(p.mass),
+        drag  = Drag(
+            ρ   = p.drag.ρ   isa Real ? p.drag.ρ   : rand(p.drag.ρ),
+            C_d = p.drag.C_d isa Real ? p.drag.C_d : rand(p.drag.C_d),
+            A   = p.drag.A   isa Real ? p.drag.A   : rand(p.drag.A)),
+    )
+end
+
+function projectile_distance(p::ProjectileParams; dt=0.01)
+    g = 9.81
+    θ = deg2rad(p.angle)
+    vx, vy = p.v0 * cos(θ), p.v0 * sin(θ)
+    x, y = 0.0, Float64(p.h0)
+    max_x = x
+    for _ in 0:dt:10.0
+        v = sqrt(vx^2 + vy^2)
+        fd = p.drag(v)
+        vx += (-fd * vx / v / p.mass) * dt
+        vy += (-g - fd * vy / v / p.mass) * dt
+        x += vx * dt; y += vy * dt
+        max_x = max(max_x, x)
+        y &lt; 0 &amp;&amp; break
+    end
+    return max_x
+end
+
+params_uncertain = ProjectileParams(
+    h0    = Uniform(1.5, 1.7),
+    v0    = Uniform(8, 12),
+    angle = Uniform(30, 60),
+    mass  = Uniform(0.1, 0.5),
+    drag  = Drag(ρ=Uniform(1.0, 1.5), C_d=Uniform(0.3, 0.6), A=Uniform(0.005, 0.015)),
+)
+
+# Model levels at different time-step resolutions
+timestepsizes = [0.25, 0.125, 0.0625, 0.03125]
+levels = Function[
+    let dt = dt; p -&gt; projectile_distance(p; dt=dt); end
+    for dt in timestepsizes
+]
+qoi_functions = Function[identity]
+
+# Collect MLMC samples
+samples = mlmc_sample(levels, qoi_functions, [4000, 2000, 1000, 300],
+                      () -&gt; rand(params_uncertain))
+println(&quot;Collected samples: &quot;, [size(samples.fine[l], 2) for l in 1:samples.n_levels],
+        &quot; across &quot;, samples.n_levels, &quot; levels&quot;)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">Collected samples: [4000, 2000, 1000, 300] across 4 levels</code></pre><h2 id="Kernel-Density-Estimation-(KDE)"><a class="docs-heading-anchor" href="#Kernel-Density-Estimation-(KDE)">Kernel Density Estimation (KDE)</a><a id="Kernel-Density-Estimation-(KDE)-1"></a><a class="docs-heading-anchor-permalink" href="#Kernel-Density-Estimation-(KDE)" title="Permalink"></a></h2><h3 id="PDF-via-KDE"><a class="docs-heading-anchor" href="#PDF-via-KDE">PDF via KDE</a><a id="PDF-via-KDE-1"></a><a class="docs-heading-anchor-permalink" href="#PDF-via-KDE" title="Permalink"></a></h3><p>The MLMC kernel density estimator uses the multilevel telescoping sum with a Gaussian kernel:</p><p class="math-container">\[\hat{f}(u) = \frac{1}{N_1} \sum_{i=1}^{N_1} K_h(u - Q_1^{(i)})
+  + \sum_{l=2}^{L} \frac{1}{N_l} \sum_{i=1}^{N_l}
+    \bigl[K_h(u - Q_l^{(i)}) - K_h(u - Q_{l-1}^{(i)})\bigr]\]</p><pre><code class="language-julia hljs">pdf_kde = estimate_pdf_mlmc_kernel_density(samples, 1)
+
+# Evaluate at some representative distances
+for d in [2.0, 4.0, 6.0, 8.0]
+    println(&quot;  PDF at d=$d m: &quot;, round(pdf_kde(d), digits=4))
+end</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">  PDF at d=2.0 m: 0.0
+  PDF at d=4.0 m: -0.0
+  PDF at d=6.0 m: 0.0162
+  PDF at d=8.0 m: 0.1455</code></pre><h3 id="CDF-via-KDE"><a class="docs-heading-anchor" href="#CDF-via-KDE">CDF via KDE</a><a id="CDF-via-KDE-1"></a><a class="docs-heading-anchor-permalink" href="#CDF-via-KDE" title="Permalink"></a></h3><p>The CDF estimator uses the Gaussian CDF kernel <span>$\Phi((u-x)/h)$</span> in the same telescoping-sum structure:</p><pre><code class="language-julia hljs">cdf_kde = estimate_cdf_mlmc_kernel_density(samples, 1)
+
+println(&quot;CDF at 3m:  &quot;, round(cdf_kde(3.0), digits=4))
+println(&quot;CDF at 5m:  &quot;, round(cdf_kde(5.0), digits=4))
+println(&quot;CDF at 7m:  &quot;, round(cdf_kde(7.0), digits=4))</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">CDF at 3m:  0.0
+CDF at 5m:  0.0002
+CDF at 7m:  0.0477</code></pre><h2 id="Maximum-Entropy-Method"><a class="docs-heading-anchor" href="#Maximum-Entropy-Method">Maximum Entropy Method</a><a id="Maximum-Entropy-Method-1"></a><a class="docs-heading-anchor-permalink" href="#Maximum-Entropy-Method" title="Permalink"></a></h2><p>The maximum entropy estimator fits a PDF of the form:</p><p class="math-container">\[\tilde{f}_U(u) = \exp\!\left(\sum_{k=0}^{R} \lambda_k \phi_k\!\left(\frac{2(u-a)}{b-a} - 1\right)\right)\]</p><p>where <span>$\phi_k$</span> are orthonormal Legendre polynomials on <span>$[-1,1]$</span>. The coefficients <span>$\lambda_k$</span> are found by matching generalized moments estimated from the MLMC samples, using Newton&#39;s method with a ForwardDiff Jacobian.</p><h3 id="MaxEnt-PDF"><a class="docs-heading-anchor" href="#MaxEnt-PDF">MaxEnt PDF</a><a id="MaxEnt-PDF-1"></a><a class="docs-heading-anchor-permalink" href="#MaxEnt-PDF" title="Permalink"></a></h3><pre><code class="language-julia hljs">pdf_maxent, λ, a, b = estimate_pdf_maxent(samples, 1; R=8)
+
+println(&quot;Support: [&quot;, round(a, digits=2), &quot;, &quot;, round(b, digits=2), &quot;]&quot;)
+println(&quot;λ coefficients: &quot;, round.(λ, digits=4))</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">Support: [4.08, 16.33]
+λ coefficients: [-21.5936, 27.0111, -35.9792, 25.6084, -24.1928, 12.4398, -9.1487, 2.8956, -1.6769]</code></pre><p>Verify the PDF integrates to 1:</p><pre><code class="language-julia hljs">using QuadGK
+integral, _ = quadgk(pdf_maxent, a, b; rtol=1e-6)
+println(&quot;∫ PDF dx = &quot;, round(integral, digits=6))</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">∫ PDF dx = 1.0</code></pre><h2 id="Comparison:-KDE-vs-MaxEnt"><a class="docs-heading-anchor" href="#Comparison:-KDE-vs-MaxEnt">Comparison: KDE vs MaxEnt</a><a id="Comparison:-KDE-vs-MaxEnt-1"></a><a class="docs-heading-anchor-permalink" href="#Comparison:-KDE-vs-MaxEnt" title="Permalink"></a></h2><pre><code class="language-julia hljs">using CairoMakie
+
+# Evaluation grid
+est = mlmc_estimate_from_samples(samples)
+finest = samples.fine[end][1, :]
+u_range = range(minimum(finest) - 0.5, maximum(finest) + 0.5, length=200)
+
+fig = Figure(size=(700, 450))
+ax = Axis(fig[1, 1]; xlabel=&quot;Landing distance (m)&quot;, ylabel=&quot;Density&quot;,
+          title=&quot;PDF of Projectile Landing Distance&quot;)
+hist!(ax, finest; bins=40, normalization=:pdf, color=(:gray, 0.3),
+      label=&quot;Finest-level histogram&quot;)
+lines!(ax, u_range, pdf_kde.(u_range); label=&quot;KDE&quot;, color=:blue, linewidth=2)
+lines!(ax, u_range, pdf_maxent.(u_range); label=&quot;MaxEnt (R=8)&quot;, color=:red,
+       linewidth=2, linestyle=:dash)
+vlines!(ax, [est[1]]; label=&quot;MLMC mean&quot;, color=:green, linewidth=1.5, linestyle=:dot)
+axislegend(ax; position=:rt)
+fig</code></pre><img src="86c58f06.png" alt="Example block output"/><h3 id="CDF-Comparison"><a class="docs-heading-anchor" href="#CDF-Comparison">CDF Comparison</a><a id="CDF-Comparison-1"></a><a class="docs-heading-anchor-permalink" href="#CDF-Comparison" title="Permalink"></a></h3><pre><code class="language-julia hljs">cdf_maxent, _, _, _ = estimate_cdf_maxent(samples, 1; R=8)
+
+fig2 = Figure(size=(700, 400))
+ax2 = Axis(fig2[1, 1]; xlabel=&quot;Landing distance (m)&quot;, ylabel=&quot;CDF&quot;,
+           title=&quot;CDF of Projectile Landing Distance&quot;)
+lines!(ax2, u_range, cdf_kde.(u_range); label=&quot;KDE CDF&quot;, color=:blue, linewidth=2)
+lines!(ax2, u_range, cdf_maxent.(u_range); label=&quot;MaxEnt CDF&quot;, color=:red,
+       linewidth=2, linestyle=:dash)
+axislegend(ax2; position=:rb)
+fig2</code></pre><img src="27782ea1.png" alt="Example block output"/></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../sample_storage/">« Sample Storage &amp; NetCDF</a><a class="docs-footer-nextpage" href="../rank_histograms/">Rank Histograms »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="catppuccin-latte">catppuccin-latte</option><option value="catppuccin-frappe">catppuccin-frappe</option><option value="catppuccin-macchiato">catppuccin-macchiato</option><option value="catppuccin-mocha">catppuccin-mocha</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.17.0 on <span class="colophon-date" title="Friday 10 April 2026 11:26">Friday 10 April 2026</span>. Using Julia version 1.12.5.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>

@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><title>Projectile Motion · MultilevelMonteCarlo.jl</title><meta name="title" content="Projectile Motion · MultilevelMonteCarlo.jl"/><meta property="og:title" content="Projectile Motion · MultilevelMonteCarlo.jl"/><meta property="twitter:title" content="Projectile Motion · MultilevelMonteCarlo.jl"/><meta name="description" content="Documentation for MultilevelMonteCarlo.jl."/><meta property="og:description" content="Documentation for MultilevelMonteCarlo.jl."/><meta property="twitter:description" content="Documentation for MultilevelMonteCarlo.jl."/><meta property="og:url" content="https://sintefmath.github.io/MultilevelMonteCarlo.jl/examples/projectile/"/><meta property="twitter:url" content="https://sintefmath.github.io/MultilevelMonteCarlo.jl/examples/projectile/"/><link rel="canonical" href="https://sintefmath.github.io/MultilevelMonteCarlo.jl/examples/projectile/"/><script data-outdated-warner src="../../assets/warner.js"></script><link href="https://cdnjs.cloudflare.com/ajax/libs/lato-font/3.0.0/css/lato-font.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/juliamono/0.050/juliamono.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/fontawesome.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/solid.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/brands.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.8/katex.min.css" rel="stylesheet" type="text/css"/><script>documenterBaseURL="../.."</script><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.6/require.min.js" data-main="../../assets/documenter.js"></script><script src="../../search_index.js"></script><script src="../../siteinfo.js"></script><script src="../../../versions.js"></script><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/catppuccin-mocha.css" data-theme-name="catppuccin-mocha"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/catppuccin-macchiato.css" data-theme-name="catppuccin-macchiato"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/catppuccin-frappe.css" data-theme-name="catppuccin-frappe"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/catppuccin-latte.css" data-theme-name="catppuccin-latte"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/documenter-dark.css" data-theme-name="documenter-dark" data-theme-primary-dark/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/documenter-light.css" data-theme-name="documenter-light" data-theme-primary/><script src="../../assets/themeswap.js"></script></head><body><div id="documenter"><nav class="docs-sidebar"><div class="docs-package-name"><span class="docs-autofit"><a href="../../">MultilevelMonteCarlo.jl</a></span></div><button class="docs-search-query input is-rounded is-small is-clickable my-2 mx-auto py-1 px-2" id="documenter-search-query">Search docs (Ctrl + /)</button><ul class="docs-menu"><li><a class="tocitem" href="../../">Home</a></li><li><span class="tocitem">Examples</span><ul><li class="is-active"><a class="tocitem" href>Projectile Motion</a><ul class="internal"><li><a class="tocitem" href="#Problem-Setup"><span>Problem Setup</span></a></li><li><a class="tocitem" href="#Define-Uncertain-Parameters"><span>Define Uncertain Parameters</span></a></li><li><a class="tocitem" href="#Define-MLMC-Levels-and-QoI-Functions"><span>Define MLMC Levels and QoI Functions</span></a></li><li><a class="tocitem" href="#Variance-Estimation-and-Optimal-Allocation"><span>Variance Estimation and Optimal Allocation</span></a></li><li><a class="tocitem" href="#MLMC-Estimation-(Scalar-QoIs)"><span>MLMC Estimation (Scalar QoIs)</span></a></li><li><a class="tocitem" href="#Mean-Trajectory:-MLMC-vs-Monte-Carlo"><span>Mean Trajectory: MLMC vs Monte Carlo</span></a></li><li><a class="tocitem" href="#Adaptive-MLMC"><span>Adaptive MLMC</span></a></li></ul></li><li><a class="tocitem" href="../sample_storage/">Sample Storage &amp; NetCDF</a></li><li><a class="tocitem" href="../pdf_estimation/">PDF &amp; CDF Estimation</a></li><li><a class="tocitem" href="../rank_histograms/">Rank Histograms</a></li><li><a class="tocitem" href="../multivariate_rank/">Multivariate Rank Histogram</a></li><li><a class="tocitem" href="../projectile_wind/">Projectile in Wind</a></li></ul></li><li><a class="tocitem" href="../../api/">API Reference</a></li></ul><div class="docs-version-selector field has-addons"><div class="control"><span class="docs-label button is-static is-size-7">Version</span></div><div class="docs-selector control is-expanded"><div class="select is-fullwidth is-size-7"><select id="documenter-version-selector"></select></div></div></div></nav><div class="docs-main"><header class="docs-navbar"><a class="docs-sidebar-button docs-navbar-link fa-solid fa-bars is-hidden-desktop" id="documenter-sidebar-button" href="#"></a><nav class="breadcrumb"><ul class="is-hidden-mobile"><li><a class="is-disabled">Examples</a></li><li class="is-active"><a href>Projectile Motion</a></li></ul><ul class="is-hidden-tablet"><li class="is-active"><a href>Projectile Motion</a></li></ul></nav><div class="docs-right"><a class="docs-navbar-link" href="https://github.com/sintefmath/MultilevelMonteCarlo.jl" title="View the repository on GitHub"><span class="docs-icon fa-brands"></span><span class="docs-label is-hidden-touch">GitHub</span></a><a class="docs-navbar-link" href="https://github.com/sintefmath/MultilevelMonteCarlo.jl/blob/main/docs/src/examples/projectile.md" title="Edit source on GitHub"><span class="docs-icon fa-solid"></span></a><a class="docs-settings-button docs-navbar-link fa-solid fa-gear" id="documenter-settings-button" href="#" title="Settings"></a><a class="docs-article-toggle-button fa-solid fa-chevron-up" id="documenter-article-toggle-button" href="javascript:;" title="Collapse all docstrings"></a></div></header><article class="content" id="documenter-page"><h1 id="Projectile-Motion"><a class="docs-heading-anchor" href="#Projectile-Motion">Projectile Motion</a><a id="Projectile-Motion-1"></a><a class="docs-heading-anchor-permalink" href="#Projectile-Motion" title="Permalink"></a></h1><p>This example demonstrates MLMC estimation applied to a projectile motion model with uncertain parameters (initial height, speed, angle, mass, drag).</p><h2 id="Problem-Setup"><a class="docs-heading-anchor" href="#Problem-Setup">Problem Setup</a><a id="Problem-Setup-1"></a><a class="docs-heading-anchor-permalink" href="#Problem-Setup" title="Permalink"></a></h2><p>We define a simple projectile simulation with drag and wrap it as an MLMC hierarchy by varying the time-step resolution.</p><pre><code class="language-julia hljs">using Parameters
+using Random
+
+Random.seed!(123)
+
+@with_kw struct Drag{RhoType, CdType, AreaType}
+    ρ::RhoType = 1.225
+    C_d::CdType = 0.47
+    A::AreaType = 0.01
+end
+
+function (d::Drag)(v)
+    return 0.5 * d.ρ * d.C_d * d.A * v^2
+end
+
+@with_kw struct ProjectileParameters{HeightType, SpeedType, AngleType, MassType, DragType}
+    initial_height::HeightType
+    initial_speed::SpeedType
+    angle_in_degrees::AngleType
+    mass::MassType
+    drag::DragType
+end
+
+import Random: rand
+
+function rand(p::ProjectileParameters)
+    ProjectileParameters(
+        initial_height = p.initial_height isa Real ? p.initial_height : rand(p.initial_height),
+        initial_speed  = p.initial_speed  isa Real ? p.initial_speed  : rand(p.initial_speed),
+        angle_in_degrees = p.angle_in_degrees isa Real ? p.angle_in_degrees : rand(p.angle_in_degrees),
+        mass = p.mass isa Real ? p.mass : rand(p.mass),
+        drag = Drag(
+            ρ   = p.drag.ρ   isa Real ? p.drag.ρ   : rand(p.drag.ρ),
+            C_d = p.drag.C_d isa Real ? p.drag.C_d : rand(p.drag.C_d),
+            A   = p.drag.A   isa Real ? p.drag.A   : rand(p.drag.A),
+        ),
+    )
+end
+
+function projectile_motion(p::ProjectileParameters; endtime=5.0, resolution=0.01)
+    g = 9.81
+    θ = deg2rad(p.angle_in_degrees)
+    vx, vy = p.initial_speed * cos(θ), p.initial_speed * sin(θ)
+    dt = resolution
+    ts = collect(0.0:dt:endtime)
+    xs = zeros(length(ts))
+    ys = zeros(length(ts))
+    xs[1] = 0.0
+    ys[1] = Float64(p.initial_height)
+    last_i = 1
+    for i in 2:length(ts)
+        v = sqrt(vx^2 + vy^2)
+        fd = p.drag(v)
+        vx += (-fd * vx / v / p.mass) * dt
+        vy += (-g - fd * vy / v / p.mass) * dt
+        xs[i] = xs[i-1] + vx * dt
+        ys[i] = ys[i-1] + vy * dt
+        last_i = i
+        ys[i] &lt; 0 &amp;&amp; break
+    end
+    return (x=xs[1:last_i], y=ys[1:last_i])
+end</code></pre><h2 id="Define-Uncertain-Parameters"><a class="docs-heading-anchor" href="#Define-Uncertain-Parameters">Define Uncertain Parameters</a><a id="Define-Uncertain-Parameters-1"></a><a class="docs-heading-anchor-permalink" href="#Define-Uncertain-Parameters" title="Permalink"></a></h2><pre><code class="language-julia hljs">using Distributions
+
+parameters_uncertain = ProjectileParameters(
+    initial_height = Uniform(1.5, 1.7),
+    initial_speed  = Uniform(8, 12),
+    angle_in_degrees = Uniform(30, 60),
+    mass = Uniform(0.1, 0.5),
+    drag = Drag(ρ=Uniform(1.0, 1.5), C_d=Uniform(0.3, 0.6), A=Uniform(0.005, 0.015)),
+)</code></pre><h2 id="Define-MLMC-Levels-and-QoI-Functions"><a class="docs-heading-anchor" href="#Define-MLMC-Levels-and-QoI-Functions">Define MLMC Levels and QoI Functions</a><a id="Define-MLMC-Levels-and-QoI-Functions-1"></a><a class="docs-heading-anchor-permalink" href="#Define-MLMC-Levels-and-QoI-Functions" title="Permalink"></a></h2><p>The <strong>levels</strong> are the same physical model run at different time-step resolutions. The <strong>QoI functions</strong> extract scalar quantities from the model output.</p><pre><code class="language-julia hljs">using MultilevelMonteCarlo
+
+timestepsizes = 2.0 .^ (-2:-1:-6)
+
+levels = Function[
+    let dt = dt
+        params -&gt; projectile_motion(params; endtime=5.0, resolution=dt)
+    end
+    for dt in timestepsizes
+]
+
+qoi_distance(output)   = maximum(output.x)
+qoi_max_height(output) = maximum(output.y)
+qoi_functions = Function[qoi_distance, qoi_max_height]</code></pre><h2 id="Variance-Estimation-and-Optimal-Allocation"><a class="docs-heading-anchor" href="#Variance-Estimation-and-Optimal-Allocation">Variance Estimation and Optimal Allocation</a><a id="Variance-Estimation-and-Optimal-Allocation-1"></a><a class="docs-heading-anchor-permalink" href="#Variance-Estimation-and-Optimal-Allocation" title="Permalink"></a></h2><pre><code class="language-julia hljs">samples_per_level = fill(1024, length(timestepsizes))
+
+variances_corrections, variances = variance_per_level(
+    levels, qoi_functions, samples_per_level,
+    () -&gt; rand(parameters_uncertain),
+)
+
+println(&quot;Variance of corrections: &quot;, round.(variances_corrections, sigdigits=3))
+println(&quot;Variance per level:      &quot;, round.(variances, sigdigits=3))</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">Variance of corrections: [96.2, 27.2, 6.44, 1.75]
+Variance per level:      [1780.0, 1970.0, 2210.0, 2100.0, 2200.0]</code></pre><p>Compute the optimal sample allocation for a given tolerance:</p><pre><code class="language-julia hljs">tolerance = 0.1
+cost_per_level = timestepsizes .^ (-1)
+
+samples_optimal = optimal_samples_per_level(
+    variances_corrections, variances, cost_per_level, tolerance,
+)
+println(&quot;Optimal samples per level: &quot;, samples_optimal)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">Optimal samples per level: [666200, 109543, 41217, 14173, 5216]</code></pre><h2 id="MLMC-Estimation-(Scalar-QoIs)"><a class="docs-heading-anchor" href="#MLMC-Estimation-(Scalar-QoIs)">MLMC Estimation (Scalar QoIs)</a><a id="MLMC-Estimation-(Scalar-QoIs)-1"></a><a class="docs-heading-anchor-permalink" href="#MLMC-Estimation-(Scalar-QoIs)" title="Permalink"></a></h2><pre><code class="language-julia hljs">result = mlmc_estimate(
+    levels, qoi_functions, samples_per_level,
+    () -&gt; rand(parameters_uncertain),
+)
+println(&quot;MLMC estimates: distance = &quot;, round(result[1], digits=3),
+        &quot;, max height = &quot;, round(result[2], digits=3))</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">MLMC estimates: distance = 10.218, max height = 3.986</code></pre><h2 id="Mean-Trajectory:-MLMC-vs-Monte-Carlo"><a class="docs-heading-anchor" href="#Mean-Trajectory:-MLMC-vs-Monte-Carlo">Mean Trajectory: MLMC vs Monte Carlo</a><a id="Mean-Trajectory:-MLMC-vs-Monte-Carlo-1"></a><a class="docs-heading-anchor-permalink" href="#Mean-Trajectory:-MLMC-vs-Monte-Carlo" title="Permalink"></a></h2><p>To compute the <strong>mean trajectory</strong> <span>$E[y(x)]$</span>, we define a vector-valued QoI that interpolates each simulated trajectory onto a common horizontal grid.</p><pre><code class="language-julia hljs"># Fixed horizontal grid for trajectory interpolation
+const x_grid = collect(range(0, 10, length=100))
+
+function interp_trajectory(x_traj, y_traj, xg)
+    n = length(x_traj)
+    result = zeros(length(xg))
+    for (i, xv) in enumerate(xg)
+        if xv &lt;= x_traj[1]
+            result[i] = y_traj[1]
+        elseif xv &gt;= x_traj[end]
+            result[i] = 0.0
+        else
+            idx = searchsortedlast(x_traj, xv)
+            frac = (xv - x_traj[idx]) / (x_traj[idx+1] - x_traj[idx])
+            result[i] = (1 - frac) * y_traj[idx] + frac * y_traj[idx+1]
+        end
+        result[i] = max(0.0, result[i])
+    end
+    return result
+end
+
+qoi_trajectory(output) = interp_trajectory(output.x, output.y, x_grid)
+
+# MLMC mean trajectory
+mlmc_traj = mlmc_estimate_vector_qoi(
+    levels, qoi_trajectory, samples_per_level,
+    () -&gt; rand(parameters_uncertain),
+)
+
+# MC mean trajectory (same total work, finest level only)
+mc_traj = evaluate_monte_carlo_vector_qoi(
+    2000,
+    () -&gt; rand(parameters_uncertain),
+    levels[end],
+    qoi_trajectory,
+)</code></pre><pre><code class="language-julia hljs">using CairoMakie
+
+fig = Figure(size=(700, 400))
+ax = Axis(fig[1, 1]; xlabel=&quot;Horizontal distance (m)&quot;, ylabel=&quot;Height (m)&quot;,
+          title=&quot;Mean Trajectory: MLMC vs Monte Carlo&quot;)
+lines!(ax, x_grid, mlmc_traj; label=&quot;MLMC mean&quot;, color=:blue, linewidth=2)
+lines!(ax, x_grid, mc_traj; label=&quot;MC mean (finest level)&quot;, color=:red,
+       linewidth=2, linestyle=:dash)
+axislegend(ax; position=:rt)
+fig</code></pre><img src="23e16d06.png" alt="Example block output"/><h2 id="Adaptive-MLMC"><a class="docs-heading-anchor" href="#Adaptive-MLMC">Adaptive MLMC</a><a id="Adaptive-MLMC-1"></a><a class="docs-heading-anchor-permalink" href="#Adaptive-MLMC" title="Permalink"></a></h2><p>The adaptive variant iteratively refines sample counts to meet the target tolerance:</p><pre><code class="language-julia hljs">adaptive_result, adaptive_counts = mlmc_estimate_adaptive(
+    levels, qoi_functions,
+    () -&gt; rand(parameters_uncertain),
+    cost_per_level, tolerance;
+    initial_samples = 100,
+)
+println(&quot;Adaptive MLMC: distance = &quot;, round(adaptive_result[1], digits=3),
+        &quot;, max height = &quot;, round(adaptive_result[2], digits=3))
+println(&quot;Final sample counts: &quot;, adaptive_counts)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">Adaptive MLMC: distance = 10.327, max height = 4.002
+Final sample counts: [678022, 110030, 44091, 15250, 5348]</code></pre></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../../">« Home</a><a class="docs-footer-nextpage" href="../sample_storage/">Sample Storage &amp; NetCDF »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="catppuccin-latte">catppuccin-latte</option><option value="catppuccin-frappe">catppuccin-frappe</option><option value="catppuccin-macchiato">catppuccin-macchiato</option><option value="catppuccin-mocha">catppuccin-mocha</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.17.0 on <span class="colophon-date" title="Friday 10 April 2026 11:26">Friday 10 April 2026</span>. Using Julia version 1.12.5.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
