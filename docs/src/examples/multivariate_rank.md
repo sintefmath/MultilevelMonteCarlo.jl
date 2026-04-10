@@ -86,12 +86,12 @@ nothing # hide
 The product-kernel KDE gives a smooth estimate of the joint CDF.
 
 ```@example mrh
-F̂ = estimate_cdf_multivariate_mlmc_kernel_density(samples, [1, 2])
+F̂ = estimate_cdf_mlmc_kernel_density_2d(samples, (1, 2))
 
 # Evaluate CDF on a grid
 x1_grid = range(μ[1] - 3σ[1], μ[1] + 3σ[1]; length = 60)
 x2_grid = range(μ[2] - 3σ[2], μ[2] + 3σ[2]; length = 60)
-cdf_vals = [F̂([x1, x2]) for x2 in x2_grid, x1 in x1_grid]
+cdf_vals = [F̂(x1, x2) for x2 in x2_grid, x1 in x1_grid]
 
 fig = Figure(size = (700, 500))
 ax = Axis(fig[1, 1]; title = "MLMC multivariate KDE CDF",
@@ -177,15 +177,48 @@ nothing # hide
 
 ![MRH comparison](mrh_comparison.png)
 
+## 2-D CDF contours: KDE vs MaxEnt
+
+We can also compare the 2-D CDF estimated by kernel density estimation with the
+Maximum Entropy method.  Both use the same MLMC samples.
+
+```@example mrh
+F̂_kde = estimate_cdf_mlmc_kernel_density_2d(samples, (1, 2))
+F̂_me, _, _, _ = estimate_cdf_maxent_2d(samples, (1, 2); R = 3)
+
+x1_grid = range(μ[1] - 3σ[1], μ[1] + 3σ[1]; length = 50)
+x2_grid = range(μ[2] - 3σ[2], μ[2] + 3σ[2]; length = 50)
+
+cdf_kde = [F̂_kde(x1, x2) for x2 in x2_grid, x1 in x1_grid]
+cdf_me  = [F̂_me(x1, x2) for x2 in x2_grid, x1 in x1_grid]
+
+fig = Figure(size = (1200, 500))
+
+ax1 = Axis(fig[1, 1]; title = "2-D KDE CDF", xlabel = "x₁", ylabel = "x₂")
+co1 = contourf!(ax1, collect(x1_grid), collect(x2_grid), cdf_kde;
+                levels = 0.0:0.1:1.0, colormap = :viridis)
+Colorbar(fig[1, 2], co1; label = "F̂(x₁, x₂)")
+
+ax2 = Axis(fig[1, 3]; title = "2-D MaxEnt CDF (R = 3)", xlabel = "x₁", ylabel = "x₂")
+co2 = contourf!(ax2, collect(x1_grid), collect(x2_grid), cdf_me;
+                levels = 0.0:0.1:1.0, colormap = :viridis)
+Colorbar(fig[1, 4], co2; label = "F̂(x₁, x₂)")
+
+save("cdf_kde_vs_maxent.png", fig)  # hide
+nothing # hide
+```
+
+![KDE vs MaxEnt CDF contour](cdf_kde_vs_maxent.png)
+
 ## CDF-value distribution
 
 We can also inspect the distribution of ``G(\mathbf{x}_j)`` values for one
 ensemble.  Under correct calibration these are concentrated in ``[0,1]``.
 
 ```@example mrh
-F̂_single = estimate_cdf_multivariate_mlmc_kernel_density(samples, [1, 2])
+F̂_single = estimate_cdf_mlmc_kernel_density_2d(samples, (1, 2))
 ens = ml_bootstrap_resample_multivariate(samples, [1, 2], 2000)
-g_vals = [F̂_single(@view ens[:, j]) for j in 1:size(ens, 2)]
+g_vals = [F̂_single(ens[1, j], ens[2, j]) for j in 1:size(ens, 2)]
 
 fig = Figure(size = (700, 400))
 ax = Axis(fig[1, 1]; title = "Distribution of G(xⱼ) = F̂(xⱼ) for one ensemble",

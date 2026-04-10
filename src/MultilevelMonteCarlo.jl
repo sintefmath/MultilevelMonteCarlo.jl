@@ -13,6 +13,8 @@ export variance_per_level, optimal_samples_per_level,
        MLMCSamples, mlmc_sample, mlmc_estimate_from_samples, read_mlmc_samples_netcdf,
        estimate_pdf_mlmc_kernel_density, estimate_cdf_mlmc_kernel_density,
        estimate_pdf_maxent, estimate_cdf_maxent,
+       estimate_pdf_mlmc_kernel_density_2d, estimate_cdf_mlmc_kernel_density_2d,
+       estimate_pdf_maxent_2d, estimate_cdf_maxent_2d,
        ml_gregory_resample, rank_histogram_gregory, rank_histogram_cdf,
        estimate_cdf_multivariate_mlmc_kernel_density,
        ml_bootstrap_resample_multivariate, multivariate_rank_histogram

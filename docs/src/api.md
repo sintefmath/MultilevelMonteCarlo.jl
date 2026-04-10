@@ -35,6 +35,15 @@ estimate_pdf_maxent
 estimate_cdf_maxent
 ```
 
+## 2-D PDF & CDF Estimation
+
+```@docs
+estimate_pdf_mlmc_kernel_density_2d
+estimate_cdf_mlmc_kernel_density_2d
+estimate_pdf_maxent_2d
+estimate_cdf_maxent_2d
+```
+
 ## Rank Histograms
 
 ```@docs

@@ -16,6 +16,7 @@ makedocs(;
             "PDF & CDF Estimation" => "examples/pdf_estimation.md",
             "Rank Histograms" => "examples/rank_histograms.md",
             "Multivariate Rank Histogram" => "examples/multivariate_rank.md",
+            "Projectile in Wind" => "examples/projectile_wind.md",
         ],
         "API Reference" => "api.md",
     ],

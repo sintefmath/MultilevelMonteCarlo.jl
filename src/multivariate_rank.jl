@@ -160,7 +160,8 @@ end
 """
     multivariate_rank_histogram(levels, qoi_functions, draw_parameters,
         number_of_rank_samples, samples_per_level;
-        number_of_resamples=1000, parallel=false) -> Vector{Float64}
+        number_of_resamples=1000, cdf_method=nothing, parallel=false)
+        -> Vector{Float64}
 
 Compute a multivariate rank histogram (MRH) using the MLMC-estimated
 multivariate CDF.
@@ -174,15 +175,13 @@ observation ``\\mathbf{x}_0`` relative to an ensemble is
 ```
 
 where ``G(\\mathbf{x}) = \\hat{F}(\\mathbf{x})`` is the multivariate CDF
-(estimated via MLMC product-kernel KDE) and ``\\hat{F}_G`` is the empirical CDF
-of the ``G``-values over the ensemble.
+and ``\\hat{F}_G`` is the empirical CDF of the ``G``-values over the ensemble.
 
 For each of the `number_of_rank_samples` iterations:
 
 1. Draw truth ``\\mathbf{y}`` from the finest level.
 2. Run [`mlmc_sample`](@ref) to obtain MLMC samples.
-3. Estimate ``G = \\hat{F}`` via
-   [`estimate_cdf_multivariate_mlmc_kernel_density`](@ref).
+3. Estimate ``G = \\hat{F}`` via the chosen CDF method.
 4. Generate an ensemble via
    [`ml_bootstrap_resample_multivariate`](@ref).
 5. Compute ``g_0 = G(\\mathbf{y})`` and ``g_j = G(\\mathbf{x}_j)`` for each
@@ -196,13 +195,17 @@ approximately ``\\mathrm{Uniform}(0,1)``.
 - `levels`: Model evaluators `[L₁, …, L_L]`.  Each returns a d-dimensional
   output (or an object from which `qoi_functions` extract d scalars).
 - `qoi_functions`: `[q₁, …, q_d]` — d QoI extractors, each
-  `qⱼ(model_output) -> scalar`.
+  `qⱼ(model_output) -> scalar`.  Currently must be exactly **2** QoIs.
 - `draw_parameters`: `() -> params`.
 - `number_of_rank_samples`: Number of PIT evaluations (outer loop).
 - `samples_per_level`: MLMC sample counts per level.
 
 # Keyword Arguments
 - `number_of_resamples::Int = 1000`: Ensemble size for each rank evaluation.
+- `cdf_method`: `(samples, (j₁,j₂)) -> F̂(x₁,x₂)`, a callable that takes
+  `MLMCSamples` and a tuple of QoI indices and returns a 2-D CDF function.
+  Default: [`estimate_cdf_mlmc_kernel_density_2d`](@ref).
+  For MaxEnt pass `(s, idx) -> first(estimate_cdf_maxent_2d(s, idx; R=4))`.
 - `parallel::Bool = false`: Thread MLMC sampling within each ensemble.
 
 # Returns
@@ -215,34 +218,39 @@ function multivariate_rank_histogram(
     number_of_rank_samples::Int,
     samples_per_level::AbstractVector{<:Integer};
     number_of_resamples::Int = 1000,
+    cdf_method::Union{Function, Nothing} = nothing,
     parallel::Bool = false,
 )
     d = length(qoi_functions)
-    qoi_indices = collect(1:d)
+    @assert d == 2 "multivariate_rank_histogram currently requires exactly 2 QoIs"
+    qoi_indices = (1, 2)
     pit_values = Vector{Float64}(undef, number_of_rank_samples)
+
+    _cdf_method = something(cdf_method, estimate_cdf_mlmc_kernel_density_2d)
 
     for i in 1:number_of_rank_samples
         # Draw truth from finest level
         params = draw_parameters()
         out = levels[end](params)
-        y = [q(out) for q in qoi_functions]
+        y1 = qoi_functions[1](out)
+        y2 = qoi_functions[2](out)
 
         # MLMC sampling campaign
         samples = mlmc_sample(levels, qoi_functions, samples_per_level,
                               draw_parameters; parallel)
 
-        # Estimate multivariate CDF via product-kernel KDE
-        F̂ = estimate_cdf_multivariate_mlmc_kernel_density(samples, qoi_indices)
+        # Estimate 2-D CDF
+        F̂ = _cdf_method(samples, qoi_indices)
 
         # Bootstrap-resample ensemble
-        ensemble = ml_bootstrap_resample_multivariate(samples, qoi_indices,
+        ensemble = ml_bootstrap_resample_multivariate(samples, collect(1:d),
                                                       number_of_resamples)
 
         # MRH: G(x) = F̂(x), rank G(y) among {G(x_j)}
-        g_0 = F̂(y)
+        g_0 = F̂(y1, y2)
         n_leq = 0
         for j in 1:number_of_resamples
-            g_j = F̂(@view ensemble[:, j])
+            g_j = F̂(ensemble[1, j], ensemble[2, j])
             if g_j <= g_0
                 n_leq += 1
             end
