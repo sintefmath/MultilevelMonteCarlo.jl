@@ -6,7 +6,7 @@ makedocs(;
     sitename = "MultilevelMonteCarlo.jl",
     format = Documenter.HTML(;
         prettyurls = get(ENV, "CI", "false") == "true",
-        canonical = "https://kjetil.github.io/MultilevelMonteCarlo.jl",
+        canonical = "https://sintefmath.github.io/MultilevelMonteCarlo.jl",
     ),
     pages = [
         "Home" => "index.md",
@@ -23,6 +23,7 @@ makedocs(;
 )
 
 deploydocs(;
-    repo = "github.com/kjetil/MultilevelMonteCarlo.jl",
+    repo = "github.com/sintefmath/MultilevelMonteCarlo.jl",
     devbranch = "main",
+    push_preview = true,
 )
