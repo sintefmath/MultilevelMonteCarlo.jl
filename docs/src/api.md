@@ -43,6 +43,14 @@ rank_histogram_gregory
 rank_histogram_cdf
 ```
 
+## Multivariate Rank Histogram
+
+```@docs
+estimate_cdf_multivariate_mlmc_kernel_density
+ml_bootstrap_resample_multivariate
+multivariate_rank_histogram
+```
+
 ## Online Statistics (Internals)
 
 ```@docs
