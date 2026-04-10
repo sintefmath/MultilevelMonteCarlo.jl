@@ -35,6 +35,14 @@ estimate_pdf_maxent
 estimate_cdf_maxent
 ```
 
+## Rank Histograms
+
+```@docs
+ml_gregory_resample
+rank_histogram_gregory
+rank_histogram_cdf
+```
+
 ## Online Statistics (Internals)
 
 ```@docs

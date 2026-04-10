@@ -14,6 +14,7 @@ makedocs(;
             "Projectile Motion" => "examples/projectile.md",
             "Sample Storage & NetCDF" => "examples/sample_storage.md",
             "PDF & CDF Estimation" => "examples/pdf_estimation.md",
+            "Rank Histograms" => "examples/rank_histograms.md",
         ],
         "API Reference" => "api.md",
     ],
