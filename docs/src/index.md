@@ -47,5 +47,5 @@ estimates = mlmc_estimate(levels, qoi_functions, samples_per_level, draw_paramet
 
 ```julia
 using Pkg
-Pkg.add(url="https://github.com/kjetil/MultilevelMonteCarlo.jl")
+Pkg.add(url="https://github.com/sintefmath/MultilevelMonteCarlo.jl")
 ```

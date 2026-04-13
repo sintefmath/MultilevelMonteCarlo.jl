@@ -159,6 +159,61 @@ nothing # hide
 
 ![Rank histogram comparison](rank_comparison.png)
 
+## Mismatched observations
+
+The observation-based interface lets us pass in observations drawn from a
+*different* distribution than the one the MLMC ensemble simulates.  This is
+useful for diagnosing model misspecification.
+
+**Wider observations** — observations from ``\mathcal{N}(2,\,1^2)`` while the
+ensemble simulates ``\mathcal{N}(2,\,0.5^2)``.  Because the observations have
+larger variance, they fall more often in the tails, producing a U-shaped PIT
+histogram.
+
+**Narrower observations** — observations from ``\mathcal{N}(2,\,0.25^2)``
+while the ensemble simulates ``\mathcal{N}(2,\,0.5^2)``.  The observations
+are concentrated near the centre, producing a peaked PIT histogram.
+
+```@example rank
+obs_wider   = [μ_true + 1.0  * randn() for _ in 1:n_rank]   # σ_obs = 1.0
+obs_narrower = [μ_true + 0.25 * randn() for _ in 1:n_rank]   # σ_obs = 0.25
+
+pit_wider = rank_histogram_cdf(obs_wider, levels, Function[qoi_function],
+                               samples_per_level,
+                               estimate_cdf_mlmc_kernel_density,
+                               draw_parameters)
+
+pit_narrower = rank_histogram_cdf(obs_narrower, levels, Function[qoi_function],
+                                  samples_per_level,
+                                  estimate_cdf_mlmc_kernel_density,
+                                  draw_parameters)
+nothing # hide
+```
+
+```@example rank
+fig = Figure(size = (1200, 400))
+
+ax1 = Axis(fig[1, 1]; title = "Matched obs (σ = 0.5)",
+           xlabel = "PIT value", ylabel = "Count")
+hist!(ax1, pit_kde; bins = n_bins, color = :teal, strokewidth = 1)
+hlines!(ax1, [n_rank / n_bins]; color = :red, linestyle = :dash)
+
+ax2 = Axis(fig[1, 2]; title = "Wider obs (σ = 1.0)",
+           xlabel = "PIT value", ylabel = "Count")
+hist!(ax2, pit_wider; bins = n_bins, color = :coral, strokewidth = 1)
+hlines!(ax2, [n_rank / n_bins]; color = :red, linestyle = :dash)
+
+ax3 = Axis(fig[1, 3]; title = "Narrower obs (σ = 0.25)",
+           xlabel = "PIT value", ylabel = "Count")
+hist!(ax3, pit_narrower; bins = n_bins, color = :goldenrod, strokewidth = 1)
+hlines!(ax3, [n_rank / n_bins]; color = :red, linestyle = :dash)
+
+save("rank_mismatch.png", fig)  # hide
+nothing # hide
+```
+
+![Mismatched rank histograms](rank_mismatch.png)
+
 ## Gregory resample distribution
 
 We can also inspect the distribution of Gregory resamples directly.

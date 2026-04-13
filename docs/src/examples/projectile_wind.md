@@ -209,3 +209,71 @@ nothing # hide
 ```
 
 ![Wind MRH](wind_mrh.png)
+
+## Mismatched observations
+
+We can test robustness by passing in observations with perturbed initial
+velocity distributions.
+
+**Wider observations** — initial velocity std doubled (``2.0`` instead of
+``1.0``), producing landings that spread beyond the ensemble.
+
+**Narrower observations** — initial velocity std halved (``0.5`` instead of
+``1.0``), producing landings concentrated near the mean.
+
+```@example wind
+function draw_params_wider()
+    vx0 = 20.0 + 2.0 * randn()
+    vy0 =  0.0 + 2.0 * randn()
+    vz0 = 20.0 + 2.0 * randn()
+    wx  = 2.0 .* GaussianRandomFields.sample(grf_wind)
+    wy  = 2.0 .* GaussianRandomFields.sample(grf_wind)
+    return (vx0, vy0, vz0, wx, wy)
+end
+
+function draw_params_narrower()
+    vx0 = 20.0 + 0.5 * randn()
+    vy0 =  0.0 + 0.5 * randn()
+    vz0 = 20.0 + 0.5 * randn()
+    wx  = 2.0 .* GaussianRandomFields.sample(grf_wind)
+    wy  = 2.0 .* GaussianRandomFields.sample(grf_wind)
+    return (vx0, vy0, vz0, wx, wy)
+end
+
+# Generate observations from each distribution
+obs_wider = hcat([let p = draw_params_wider(); r = levels[end](p); [qoi_functions[1](r), qoi_functions[2](r)] end for _ in 1:n_rank]...)
+obs_narrower = hcat([let p = draw_params_narrower(); r = levels[end](p); [qoi_functions[1](r), qoi_functions[2](r)] end for _ in 1:n_rank]...)
+
+pit_wider = multivariate_rank_histogram(obs_wider, levels, qoi_functions,
+                                        samples_per_level, draw_params;
+                                        number_of_resamples = n_resamples)
+
+pit_narrower = multivariate_rank_histogram(obs_narrower, levels, qoi_functions,
+                                           samples_per_level, draw_params;
+                                           number_of_resamples = n_resamples)
+nothing # hide
+```
+
+```@example wind
+fig = Figure(size = (1200, 400))
+
+ax1 = Axis(fig[1, 1]; title = "Matched obs",
+           xlabel = "PIT value", ylabel = "Count")
+hist!(ax1, pit_wind; bins = n_bins, color = :mediumpurple, strokewidth = 1)
+hlines!(ax1, [n_rank / n_bins]; color = :red, linestyle = :dash)
+
+ax2 = Axis(fig[1, 2]; title = "Wider obs (v₀ std × 2)",
+           xlabel = "PIT value", ylabel = "Count")
+hist!(ax2, pit_wider; bins = n_bins, color = :coral, strokewidth = 1)
+hlines!(ax2, [n_rank / n_bins]; color = :red, linestyle = :dash)
+
+ax3 = Axis(fig[1, 3]; title = "Narrower obs (v₀ std × 0.5)",
+           xlabel = "PIT value", ylabel = "Count")
+hist!(ax3, pit_narrower; bins = n_bins, color = :goldenrod, strokewidth = 1)
+hlines!(ax3, [n_rank / n_bins]; color = :red, linestyle = :dash)
+
+save("wind_mrh_mismatch.png", fig)  # hide
+nothing # hide
+```
+
+![Wind MRH mismatched observations](wind_mrh_mismatch.png)

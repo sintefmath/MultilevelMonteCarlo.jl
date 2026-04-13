@@ -177,6 +177,60 @@ nothing # hide
 
 ![MRH comparison](mrh_comparison.png)
 
+## Mismatched observations
+
+The observation-based interface lets us test with observations drawn from a
+different distribution than the one the MLMC ensemble simulates.
+
+**Wider observations** — ``\sigma_{\mathrm{obs}} = (1.0, 0.8)`` vs the
+simulation's ``\sigma = (0.5, 0.4)``.  The observations spread beyond the
+ensemble, so the PIT histogram shows a U-shape.
+
+**Narrower observations** — ``\sigma_{\mathrm{obs}} = (0.25, 0.2)`` vs the
+simulation's ``\sigma = (0.5, 0.4)``.  The observations cluster near the
+centre, producing a peaked PIT histogram.
+
+```@example mrh
+σ_wider   = [1.0, 0.8]
+σ_narrower = [0.25, 0.2]
+
+obs_wider    = hcat([μ .+ σ_wider   .* randn(2) for _ in 1:n_rank]...)
+obs_narrower = hcat([μ .+ σ_narrower .* randn(2) for _ in 1:n_rank]...)
+
+pit_wider = multivariate_rank_histogram(obs_wider, levels, qoi_functions,
+                                        samples_per_level, draw_parameters;
+                                        number_of_resamples = n_resamples)
+
+pit_narrower = multivariate_rank_histogram(obs_narrower, levels, qoi_functions,
+                                           samples_per_level, draw_parameters;
+                                           number_of_resamples = n_resamples)
+nothing # hide
+```
+
+```@example mrh
+fig = Figure(size = (1200, 400))
+
+ax1 = Axis(fig[1, 1]; title = "Matched obs (σ = [0.5, 0.4])",
+           xlabel = "PIT value", ylabel = "Count")
+hist!(ax1, pit_mrh; bins = n_bins, color = :mediumpurple, strokewidth = 1)
+hlines!(ax1, [n_rank / n_bins]; color = :red, linestyle = :dash)
+
+ax2 = Axis(fig[1, 2]; title = "Wider obs (σ = [1.0, 0.8])",
+           xlabel = "PIT value", ylabel = "Count")
+hist!(ax2, pit_wider; bins = n_bins, color = :coral, strokewidth = 1)
+hlines!(ax2, [n_rank / n_bins]; color = :red, linestyle = :dash)
+
+ax3 = Axis(fig[1, 3]; title = "Narrower obs (σ = [0.25, 0.2])",
+           xlabel = "PIT value", ylabel = "Count")
+hist!(ax3, pit_narrower; bins = n_bins, color = :goldenrod, strokewidth = 1)
+hlines!(ax3, [n_rank / n_bins]; color = :red, linestyle = :dash)
+
+save("mrh_mismatch.png", fig)  # hide
+nothing # hide
+```
+
+![MRH mismatched observations](mrh_mismatch.png)
+
 ## 2-D CDF contours: KDE vs MaxEnt
 
 We can also compare the 2-D CDF estimated by kernel density estimation with the

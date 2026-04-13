@@ -158,13 +158,13 @@ end
 #= ── Multivariate rank histogram ────────────────────────────────────────── =#
 
 """
-    multivariate_rank_histogram(levels, qoi_functions, draw_parameters,
-        number_of_rank_samples, samples_per_level;
+    multivariate_rank_histogram(observations, levels, qoi_functions,
+        samples_per_level, draw_parameters;
         number_of_resamples=1000, cdf_method=nothing, parallel=false)
         -> Vector{Float64}
 
 Compute a multivariate rank histogram (MRH) using the MLMC-estimated
-multivariate CDF.
+multivariate CDF for a given matrix of observations.
 
 Implements the approach of Gneiting et al. (2008): the multivariate rank of an
 observation ``\\mathbf{x}_0`` relative to an ensemble is
@@ -177,28 +177,28 @@ observation ``\\mathbf{x}_0`` relative to an ensemble is
 where ``G(\\mathbf{x}) = \\hat{F}(\\mathbf{x})`` is the multivariate CDF
 and ``\\hat{F}_G`` is the empirical CDF of the ``G``-values over the ensemble.
 
-For each of the `number_of_rank_samples` iterations:
+For each observation column in `observations`:
 
-1. Draw truth ``\\mathbf{y}`` from the finest level.
-2. Run [`mlmc_sample`](@ref) to obtain MLMC samples.
-3. Estimate ``G = \\hat{F}`` via the chosen CDF method.
-4. Generate an ensemble via
+1. Run [`mlmc_sample`](@ref) to obtain MLMC samples.
+2. Estimate ``G = \\hat{F}`` via the chosen CDF method.
+3. Generate an ensemble via
    [`ml_bootstrap_resample_multivariate`](@ref).
-5. Compute ``g_0 = G(\\mathbf{y})`` and ``g_j = G(\\mathbf{x}_j)`` for each
+4. Compute ``g_0 = G(\\mathbf{y})`` and ``g_j = G(\\mathbf{x}_j)`` for each
    ensemble member.
-6. Record the PIT value ``\\hat{F}_G(g_0) = \\frac{1}{m}\\#\\{j : g_j \\le g_0\\}``.
+5. Record the PIT value ``\\hat{F}_G(g_0) = \\frac{1}{m}\\#\\{j : g_j \\le g_0\\}``.
 
 If the MLMC ensemble is well calibrated, the returned PIT values are
 approximately ``\\mathrm{Uniform}(0,1)``.
 
 # Arguments
+- `observations`: `Matrix{<:Real}` of size `(d, n)` — each column is one
+  d-dimensional observation.
 - `levels`: Model evaluators `[L₁, …, L_L]`.  Each returns a d-dimensional
   output (or an object from which `qoi_functions` extract d scalars).
 - `qoi_functions`: `[q₁, …, q_d]` — d QoI extractors, each
   `qⱼ(model_output) -> scalar`.  Currently must be exactly **2** QoIs.
-- `draw_parameters`: `() -> params`.
-- `number_of_rank_samples`: Number of PIT evaluations (outer loop).
 - `samples_per_level`: MLMC sample counts per level.
+- `draw_parameters`: `() -> params`.
 
 # Keyword Arguments
 - `number_of_resamples::Int = 1000`: Ensemble size for each rank evaluation.
@@ -212,28 +212,27 @@ approximately ``\\mathrm{Uniform}(0,1)``.
 `Vector{Float64}` of PIT values, each ideally in ``[0, 1]``.
 """
 function multivariate_rank_histogram(
+    observations::AbstractMatrix{<:Real},
     levels::AbstractVector{<:Function},
     qoi_functions::AbstractVector{<:Function},
-    draw_parameters::Function,
-    number_of_rank_samples::Int,
-    samples_per_level::AbstractVector{<:Integer};
+    samples_per_level::AbstractVector{<:Integer},
+    draw_parameters::Function;
     number_of_resamples::Int = 1000,
     cdf_method::Union{Function, Nothing} = nothing,
     parallel::Bool = false,
 )
     d = length(qoi_functions)
     @assert d == 2 "multivariate_rank_histogram currently requires exactly 2 QoIs"
+    @assert size(observations, 1) == d "observations must have d=$(d) rows"
+    n_obs = size(observations, 2)
     qoi_indices = (1, 2)
-    pit_values = Vector{Float64}(undef, number_of_rank_samples)
+    pit_values = Vector{Float64}(undef, n_obs)
 
     _cdf_method = something(cdf_method, estimate_cdf_mlmc_kernel_density_2d)
 
-    for i in 1:number_of_rank_samples
-        # Draw truth from finest level
-        params = draw_parameters()
-        out = levels[end](params)
-        y1 = qoi_functions[1](out)
-        y2 = qoi_functions[2](out)
+    for i in 1:n_obs
+        y1 = observations[1, i]
+        y2 = observations[2, i]
 
         # MLMC sampling campaign
         samples = mlmc_sample(levels, qoi_functions, samples_per_level,
@@ -259,4 +258,38 @@ function multivariate_rank_histogram(
     end
 
     return pit_values
+end
+
+"""
+    multivariate_rank_histogram(levels, qoi_functions, draw_parameters,
+        number_of_rank_samples, samples_per_level;
+        number_of_resamples=1000, cdf_method=nothing, parallel=false)
+        -> Vector{Float64}
+
+Convenience wrapper that draws `number_of_rank_samples` observations from the
+finest level and then calls the observation-based
+[`multivariate_rank_histogram`](@ref).
+"""
+function multivariate_rank_histogram(
+    levels::AbstractVector{<:Function},
+    qoi_functions::AbstractVector{<:Function},
+    draw_parameters::Function,
+    number_of_rank_samples::Int,
+    samples_per_level::AbstractVector{<:Integer};
+    number_of_resamples::Int = 1000,
+    cdf_method::Union{Function, Nothing} = nothing,
+    parallel::Bool = false,
+)
+    d = length(qoi_functions)
+    observations = Matrix{Float64}(undef, d, number_of_rank_samples)
+    for i in 1:number_of_rank_samples
+        params = draw_parameters()
+        out = levels[end](params)
+        for k in 1:d
+            observations[k, i] = qoi_functions[k](out)
+        end
+    end
+    return multivariate_rank_histogram(observations, levels, qoi_functions,
+                                       samples_per_level, draw_parameters;
+                                       number_of_resamples, cdf_method, parallel)
 end

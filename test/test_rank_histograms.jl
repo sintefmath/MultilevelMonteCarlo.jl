@@ -30,8 +30,8 @@ println("  Resample std  = $(round(resample_std, digits=3))   (expected ≈ $σ_
 @assert abs(resample_mean - μ_true) < 0.3 "Gregory resample mean too far off"
 @assert abs(resample_std - σ_true) < 0.3 "Gregory resample std too far off"
 
-# --- Test 2: rank_histogram_gregory ---
-println("\n=== Test 2: rank_histogram_gregory ===")
+# --- Test 2: rank_histogram_gregory (wrapper) ---
+println("\n=== Test 2: rank_histogram_gregory (wrapper) ===")
 n_rank = 100
 n_resamples = 200
 samples_per_level = [400, 200, 50]
@@ -40,17 +40,28 @@ ranks = rank_histogram_gregory(levels, qoi_function, draw_parameters,
                                n_rank, samples_per_level;
                                number_of_resamples=n_resamples)
 
-# Ranks must be in {1, ..., n_resamples + 1}
 println("  min rank = $(minimum(ranks)), max rank = $(maximum(ranks))")
 @assert all(1 .<= ranks .<= n_resamples + 1) "Ranks out of valid range"
-# Mean rank should be roughly (n_resamples+1)/2 for a uniform distribution
 mean_rank = mean(ranks)
 expected_mean = (n_resamples + 1) / 2
 println("  mean rank = $(round(mean_rank, digits=1))  (expected ≈ $expected_mean)")
 @assert abs(mean_rank - expected_mean) / expected_mean < 0.3 "Mean rank too far from expected"
 
-# --- Test 3: rank_histogram_cdf with KDE ---
-println("\n=== Test 3: rank_histogram_cdf (KDE) ===")
+# --- Test 2b: rank_histogram_gregory (observations-based) ---
+println("\n=== Test 2b: rank_histogram_gregory (observations) ===")
+observations_greg = [μ_true + σ_true * randn() for _ in 1:n_rank]
+ranks_obs = rank_histogram_gregory(observations_greg, levels, Function[qoi_function],
+                                   samples_per_level, draw_parameters;
+                                   number_of_resamples=n_resamples)
+
+println("  min rank = $(minimum(ranks_obs)), max rank = $(maximum(ranks_obs))")
+@assert all(1 .<= ranks_obs .<= n_resamples + 1) "Ranks out of valid range"
+mean_rank_obs = mean(ranks_obs)
+println("  mean rank = $(round(mean_rank_obs, digits=1))  (expected ≈ $expected_mean)")
+@assert abs(mean_rank_obs - expected_mean) / expected_mean < 0.3 "Mean rank too far from expected"
+
+# --- Test 3: rank_histogram_cdf with KDE (wrapper) ---
+println("\n=== Test 3: rank_histogram_cdf (KDE, wrapper) ===")
 pit_kde = rank_histogram_cdf(levels, qoi_function, draw_parameters,
                              n_rank, samples_per_level,
                              estimate_cdf_mlmc_kernel_density)
@@ -61,9 +72,22 @@ pit_kde_mean = mean(pit_kde)
 println("  PIT mean = $(round(pit_kde_mean, digits=3))  (expected ≈ 0.5)")
 @assert abs(pit_kde_mean - 0.5) < 0.15 "KDE PIT mean too far from 0.5"
 
+# --- Test 3b: rank_histogram_cdf with KDE (observations-based) ---
+println("\n=== Test 3b: rank_histogram_cdf (KDE, observations) ===")
+observations_kde = [μ_true + σ_true * randn() for _ in 1:n_rank]
+pit_kde_obs = rank_histogram_cdf(observations_kde, levels, Function[qoi_function],
+                                 samples_per_level,
+                                 estimate_cdf_mlmc_kernel_density,
+                                 draw_parameters)
+
+println("  PIT range = [$(round(minimum(pit_kde_obs), digits=3)), $(round(maximum(pit_kde_obs), digits=3))]")
+@assert all(0.0 .<= pit_kde_obs .<= 1.0) "KDE PIT values out of [0,1]"
+pit_kde_obs_mean = mean(pit_kde_obs)
+println("  PIT mean = $(round(pit_kde_obs_mean, digits=3))  (expected ≈ 0.5)")
+@assert abs(pit_kde_obs_mean - 0.5) < 0.15 "KDE PIT mean too far from 0.5"
+
 # --- Test 4: rank_histogram_cdf with MaxEnt ---
 println("\n=== Test 4: rank_histogram_cdf (MaxEnt) ===")
-# MaxEnt needs larger samples to keep Newton iterations stable
 maxent_cdf_method(s, i) = first(estimate_cdf_maxent(s, i; R=4))
 samples_per_level_maxent = [2000, 1000, 200]
 

@@ -55,32 +55,31 @@ end
 #= ── Rank histograms ────────────────────────────────────────────────────── =#
 
 """
-    rank_histogram_gregory(levels, qoi_function, draw_parameters,
-                           number_of_rank_samples, samples_per_level;
+    rank_histogram_gregory(observations, levels, qoi_functions,
+                           samples_per_level, draw_parameters;
                            number_of_resamples=1000, parallel=false)
                            -> Vector{Int}
 
-Compute a rank histogram using Gregory's MLMC inverse-CDF resampling.
+Compute a rank histogram using Gregory's MLMC inverse-CDF resampling for a
+given list of observations.
 
-For each of the `number_of_rank_samples` iterations:
+For each observation ``y`` in `observations`:
 
-1. Draw a "truth" value ``y = q\\bigl(L_\\text{finest}(\\theta)\\bigr)`` where
-   ``\\theta \\sim`` `draw_parameters()`.
-2. Run a fresh MLMC sampling campaign via [`mlmc_sample`](@ref).
-3. Generate `number_of_resamples` values from the MLMC ensemble using
+1. Run a fresh MLMC sampling campaign via [`mlmc_sample`](@ref).
+2. Generate `number_of_resamples` values from the MLMC ensemble using
    [`ml_gregory_resample`](@ref).
-4. Sort the resampled array and record the rank of ``y``.
+3. Sort the resampled array and record the rank of ``y``.
 
-If the MLMC ensemble correctly represents the true distribution, the returned
-ranks are approximately ``\\mathrm{Uniform}\\{1,\\ldots,N_r+1\\}`` where
-``N_r`` = `number_of_resamples`.
+If the MLMC ensemble correctly represents the distribution of the observations,
+the returned ranks are approximately ``\\mathrm{Uniform}\\{1,\\ldots,N_r+1\\}``
+where ``N_r`` = `number_of_resamples`.
 
 # Arguments
+- `observations`: `Vector{<:Real}` of observed values to rank.
 - `levels`: Model evaluators `[L₁, …, L_L]`.
-- `qoi_function`: `q(model_output) -> scalar`.
-- `draw_parameters`: `() -> params`.
-- `number_of_rank_samples`: Number of rank evaluations (outer loop).
+- `qoi_functions`: `[q(model_output) -> scalar]` — a vector with a single QoI.
 - `samples_per_level`: Sample counts for each MLMC ensemble.
+- `draw_parameters`: `() -> params`.
 
 # Keyword Arguments
 - `number_of_resamples::Int = 1000`: Resampled values per ensemble.
@@ -90,19 +89,19 @@ ranks are approximately ``\\mathrm{Uniform}\\{1,\\ldots,N_r+1\\}`` where
 `Vector{Int}` of ranks, each in ``\\{1,\\ldots,N_r+1\\}``.
 """
 function rank_histogram_gregory(
+    observations::AbstractVector{<:Real},
     levels::AbstractVector{<:Function},
-    qoi_function::Function,
-    draw_parameters::Function,
-    number_of_rank_samples::Int,
-    samples_per_level::AbstractVector{<:Integer};
+    qoi_functions::AbstractVector{<:Function},
+    samples_per_level::AbstractVector{<:Integer},
+    draw_parameters::Function;
     number_of_resamples::Int = 1000,
     parallel::Bool = false,
 )
-    qoi_functions = Function[qoi_function]
-    ranks = Vector{Int}(undef, number_of_rank_samples)
+    n_obs = length(observations)
+    ranks = Vector{Int}(undef, n_obs)
 
-    for i in 1:number_of_rank_samples
-        y = qoi_function(levels[end](draw_parameters()))
+    for i in 1:n_obs
+        y = observations[i]
 
         samples = mlmc_sample(levels, qoi_functions, samples_per_level,
                               draw_parameters; parallel)
@@ -115,38 +114,96 @@ function rank_histogram_gregory(
 end
 
 """
-    rank_histogram_cdf(levels, qoi_function, draw_parameters,
-                       number_of_rank_samples, samples_per_level,
-                       cdf_method; parallel=false) -> Vector{Float64}
+    rank_histogram_gregory(levels, qoi_function, draw_parameters,
+                           number_of_rank_samples, samples_per_level;
+                           number_of_resamples=1000, parallel=false)
+                           -> Vector{Int}
+
+Convenience wrapper that draws `number_of_rank_samples` observations from the
+finest level and then calls the observation-based
+[`rank_histogram_gregory`](@ref).
+"""
+function rank_histogram_gregory(
+    levels::AbstractVector{<:Function},
+    qoi_function::Function,
+    draw_parameters::Function,
+    number_of_rank_samples::Int,
+    samples_per_level::AbstractVector{<:Integer};
+    number_of_resamples::Int = 1000,
+    parallel::Bool = false,
+)
+    observations = [qoi_function(levels[end](draw_parameters()))
+                    for _ in 1:number_of_rank_samples]
+    return rank_histogram_gregory(observations, levels, Function[qoi_function],
+                                  samples_per_level, draw_parameters;
+                                  number_of_resamples, parallel)
+end
+
+"""
+    rank_histogram_cdf(observations, levels, qoi_functions,
+                       samples_per_level, cdf_method, draw_parameters;
+                       parallel=false) -> Vector{Float64}
 
 Compute a probability-integral-transform (PIT) histogram using an MLMC-based
-CDF estimate.
+CDF estimate for a given list of observations.
 
-For each of the `number_of_rank_samples` iterations:
+For each observation ``y`` in `observations`:
 
-1. Draw a "truth" value ``y = q\\bigl(L_\\text{finest}(\\theta)\\bigr)``.
-2. Run a fresh MLMC sampling campaign.
-3. Estimate the CDF ``\\hat{F}`` from the MLMC samples using `cdf_method`.
-4. Record ``\\hat{F}(y)``.
+1. Run a fresh MLMC sampling campaign.
+2. Estimate the CDF ``\\hat{F}`` from the MLMC samples using `cdf_method`.
+3. Record ``\\hat{F}(y)``.
 
-If the CDF estimate is well calibrated, the returned PIT values are
-approximately ``\\mathrm{Uniform}(0,1)``.
+If the CDF estimate is well calibrated for the observations, the returned PIT
+values are approximately ``\\mathrm{Uniform}(0,1)``.
 
 # Arguments
+- `observations`: `Vector{<:Real}` of observed values to evaluate.
 - `levels`: Model evaluators `[L₁, …, L_L]`.
-- `qoi_function`: `q(model_output) -> scalar`.
-- `draw_parameters`: `() -> params`.
-- `number_of_rank_samples`: Number of PIT evaluations (outer loop).
+- `qoi_functions`: `[q(model_output) -> scalar]` — a vector with a single QoI.
 - `samples_per_level`: Sample counts for each MLMC ensemble.
 - `cdf_method`: `(samples::MLMCSamples, qoi_index::Int) -> cdf_func` where
   `cdf_func(x)::Float64`.  Pass [`estimate_cdf_mlmc_kernel_density`](@ref) for
   KDE, or `(s, i) -> first(estimate_cdf_maxent(s, i; R=6))` for MaxEnt.
+- `draw_parameters`: `() -> params`.
 
 # Keyword Arguments
 - `parallel::Bool = false`: Thread MLMC sampling within each ensemble.
 
 # Returns
 `Vector{Float64}` of PIT values, each ideally in ``[0, 1]``.
+"""
+function rank_histogram_cdf(
+    observations::AbstractVector{<:Real},
+    levels::AbstractVector{<:Function},
+    qoi_functions::AbstractVector{<:Function},
+    samples_per_level::AbstractVector{<:Integer},
+    cdf_method::Function,
+    draw_parameters::Function;
+    parallel::Bool = false,
+)
+    n_obs = length(observations)
+    pit_values = Vector{Float64}(undef, n_obs)
+
+    for i in 1:n_obs
+        y = observations[i]
+
+        samples = mlmc_sample(levels, qoi_functions, samples_per_level,
+                              draw_parameters; parallel)
+        cdf_func = cdf_method(samples, 1)
+        pit_values[i] = cdf_func(y)
+    end
+
+    return pit_values
+end
+
+"""
+    rank_histogram_cdf(levels, qoi_function, draw_parameters,
+                       number_of_rank_samples, samples_per_level,
+                       cdf_method; parallel=false) -> Vector{Float64}
+
+Convenience wrapper that draws `number_of_rank_samples` observations from the
+finest level and then calls the observation-based
+[`rank_histogram_cdf`](@ref).
 """
 function rank_histogram_cdf(
     levels::AbstractVector{<:Function},
@@ -157,17 +214,9 @@ function rank_histogram_cdf(
     cdf_method::Function;
     parallel::Bool = false,
 )
-    qoi_functions = Function[qoi_function]
-    pit_values = Vector{Float64}(undef, number_of_rank_samples)
-
-    for i in 1:number_of_rank_samples
-        y = qoi_function(levels[end](draw_parameters()))
-
-        samples = mlmc_sample(levels, qoi_functions, samples_per_level,
-                              draw_parameters; parallel)
-        cdf_func = cdf_method(samples, 1)
-        pit_values[i] = cdf_func(y)
-    end
-
-    return pit_values
+    observations = [qoi_function(levels[end](draw_parameters()))
+                    for _ in 1:number_of_rank_samples]
+    return rank_histogram_cdf(observations, levels, Function[qoi_function],
+                              samples_per_level, cdf_method, draw_parameters;
+                              parallel)
 end

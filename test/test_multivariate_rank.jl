@@ -57,8 +57,8 @@ println("  Dim 2: mean=$(round(resample_mean2, digits=3)), std=$(round(resample_
 @assert abs(resample_std1 - σ[1]) < 0.3 "Bootstrap dim 1 std off"
 @assert abs(resample_std2 - σ[2]) < 0.3 "Bootstrap dim 2 std off"
 
-# --- Test 3: multivariate rank histogram ---
-println("\n=== Test 3: multivariate rank histogram ===")
+# --- Test 3: multivariate rank histogram (wrapper) ---
+println("\n=== Test 3: multivariate rank histogram (wrapper) ===")
 n_rank = 80
 n_resamples = 200
 samples_per_level = [800, 400, 100]
@@ -73,5 +73,19 @@ println("  PIT range = [$(round(minimum(pit_values), digits=3)), $(round(maximum
 pit_mean = mean(pit_values)
 println("  PIT mean = $(round(pit_mean, digits=3))  (expected ≈ 0.5)")
 @assert abs(pit_mean - 0.5) < 0.2 "MRH PIT mean too far from 0.5"
+
+# --- Test 3b: multivariate rank histogram (observations-based) ---
+println("\n=== Test 3b: multivariate rank histogram (observations) ===")
+obs_mrh = hcat([μ .+ σ .* randn(2) for _ in 1:n_rank]...)
+pit_values_obs = multivariate_rank_histogram(obs_mrh, levels, qoi_functions,
+                                             samples_per_level, draw_parameters;
+                                             number_of_resamples=n_resamples)
+
+println("  PIT range = [$(round(minimum(pit_values_obs), digits=3)), $(round(maximum(pit_values_obs), digits=3))]")
+@assert all(0.0 .<= pit_values_obs .<= 1.0) "MRH PIT values (obs) out of [0,1]"
+
+pit_mean_obs = mean(pit_values_obs)
+println("  PIT mean = $(round(pit_mean_obs, digits=3))  (expected ≈ 0.5)")
+@assert abs(pit_mean_obs - 0.5) < 0.2 "MRH PIT mean (obs) too far from 0.5"
 
 println("\n✓ All multivariate rank histogram tests passed.")
