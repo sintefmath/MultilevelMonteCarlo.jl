@@ -576,12 +576,14 @@ function estimate_pdf_maxent_2d(
     # --- Newton solver ---
     # Compute ALL moments in a single 2D quadrature pass (vector-valued integrand)
     function _moments_from_lambda(λ_vec)
+        any(isnan, λ_vec) && return fill(NaN, N_params)
         μ_vec, _ = quadgk(-1.0, 1.0; rtol=1e-8) do y
             Py = _legendre_polynomials(y, R)
             inner, _ = quadgk(-1.0, 1.0; rtol=1e-8) do x
                 Px = _legendre_polynomials(x, R)
                 T_vec = kron(Py, Px)   # vec(Px * Py') in column-major order
-                exp_val = exp(dot(T_vec, λ_vec))
+                logval = dot(T_vec, λ_vec)
+                exp_val = isfinite(logval) ? exp(clamp(logval, -50.0, 50.0)) : 0.0
                 return T_vec .* exp_val
             end
             return inner
@@ -603,7 +605,13 @@ function estimate_pdf_maxent_2d(
     best_res = Inf
 
     for iter in 1:maxiter
-        res = _residual(λ_vec)
+        res = try
+            _residual(λ_vec)
+        catch
+            λ_vec .= best_λ
+            break
+        end
+        any(isnan, res) && (λ_vec .= best_λ; break)
         res_norm = norm(res)
 
         if res_norm < best_res
@@ -615,9 +623,19 @@ function estimate_pdf_maxent_2d(
             break
         end
 
-        J = ForwardDiff.jacobian(_residual, λ_vec)
+        J = try
+            ForwardDiff.jacobian(_residual, λ_vec)
+        catch
+            λ_vec .= best_λ
+            break
+        end
         try
             δ = J \ res
+            # Limit step size to prevent divergence
+            δ_norm = norm(δ)
+            if δ_norm > 10.0
+                δ .*= 10.0 / δ_norm
+            end
             λ_vec .-= δ
         catch
             λ_vec .= best_λ
@@ -639,7 +657,7 @@ function estimate_pdf_maxent_2d(
         Px = _legendre_polynomials(ξ1, R)
         Py = _legendre_polynomials(ξ2, R)
         T_vec = kron(Py, Px)
-        return scale * exp(dot(T_vec, λ_vec))
+        return scale * exp(clamp(dot(T_vec, λ_vec), -500.0, 500.0))
     end
 
     return pdf_func, Λ, (a1, b1), (a2, b2)
