@@ -239,22 +239,18 @@ function multivariate_rank_histogram(
                               draw_parameters; parallel)
 
         # Estimate 2-D CDF
-        F̂ = _cdf_method(samples, qoi_indices)
+        G= _cdf_method(samples, qoi_indices)
 
         # Bootstrap-resample ensemble
-        ensemble = ml_bootstrap_resample_multivariate(samples, collect(1:d),
-                                                      number_of_resamples)
+        # ensemble = ml_bootstrap_resample_multivariate(samples, collect(1:d),
+        #                                               number_of_resamples)
 
-        # MRH: G(x) = F̂(x), rank G(y) among {G(x_j)}
-        g_0 = F̂(y1, y2)
-        n_leq = 0
-        for j in 1:number_of_resamples
-            g_j = F̂(ensemble[1, j], ensemble[2, j])
-            if g_j <= g_0
-                n_leq += 1
-            end
-        end
-        pit_values[i] = n_leq / number_of_resamples
+        samples_G = MLMCSamples(samples, G)
+
+
+        cdf_F = estimate_cdf_mlmc_kernel_density(samples_G, 1)
+        
+        pit_values[i] = cdf_F(G(y1, y2)) # PIT value for the observation
     end
 
     return pit_values

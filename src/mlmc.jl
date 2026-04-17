@@ -627,6 +627,13 @@ struct MLMCSamples
     n_qois::Int
 end
 
+function MLMCSamples(samples::MLMCSamples, q::Function)
+    fine = [reshape([q(samples.fine[lvl][:, s]...) for s in 1:size(samples.fine[lvl], 2)], 1, size(samples.fine[lvl], 2)) for lvl in 1:samples.n_levels]
+    coarse = [reshape([q(samples.coarse[lvl][:, s]...) for s in 1:size(samples.coarse[lvl], 2)], 1, size(samples.coarse[lvl], 2)) for lvl in 1:samples.n_levels]
+    corrections = fine .- coarse
+    return MLMCSamples(fine, coarse, corrections, samples.n_levels, samples.n_qois)
+end
+
 """
     mlmc_sample(levels, qoi_functions, samples_per_level, draw_parameters;
                 parallel=false, netcdf_path=nothing) -> MLMCSamples
