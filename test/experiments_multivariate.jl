@@ -1,5 +1,6 @@
 using MultilevelMonteCarlo
 using CairoMakie
+using DelimitedFiles
 using Distributions
 using GaussianRandomFields
 using LinearAlgebra
@@ -38,16 +39,15 @@ const MULTIVARIATE_METHODS      = (:singlelevel, :kde_cdf, :maxent_cdf)
 Multivariate normal application (d = 2) matching the Wilks (2017) setup
 projected to the first two coordinates.
 """
-function wilks_mvn_app()
+function wilks_mvn_app(; n_levels::Integer = 3)
+    @assert n_levels >= 2
     d = 3
     Σ0 = truth_covariance(d; rho = 0.6, sigma2 = 1.0)
 
-    # Levels add decreasing amounts of isotropic noise
-    levels = Function[
-        params -> params .+ 0.3 .* randn(d),
-        params -> params .+ 0.03 .* randn(d),
-        params -> Float64.(params),
-    ]
+    # Levels add geometrically decreasing isotropic noise; finest is exact.
+    σs = _geomspace(0.3, 0.03, n_levels - 1)
+    levels = Function[(params -> params .+ σ .* randn(d)) for σ in σs]
+    push!(levels, params -> Float64.(params))
     qoi_functions = Function[x -> x[1], x -> x[2]]
 
     dist_truth = MvNormal(zeros(d), Symmetric(Σ0))
@@ -85,7 +85,7 @@ function wilks_mvn_app()
     )
 
     return (
-        name = "wilks_mvn",
+        name = "wilks_mvn_$(n_levels)L",
         levels = levels,
         qoi_functions = qoi_functions,
         sim_draw = sim_draw,
@@ -101,7 +101,8 @@ end
 2-D landing-position application for a projectile flying through an
 uncertain wind field. Levels differ in the Euler integration timestep.
 """
-function projectile_wind_app(; seed::Int = 123)
+function projectile_wind_app(; seed::Int = 123, n_levels::Integer = 3)
+    @assert n_levels >= 1
     Random.seed!(seed)
 
     g_acc = 9.81
@@ -148,7 +149,8 @@ function projectile_wind_app(; seed::Int = 123)
         return simulate
     end
 
-    levels = Function[make_level(0.1), make_level(0.02), make_level(0.004)]
+    dts = _geomspace(0.1, 0.004, n_levels)
+    levels = Function[make_level(dt) for dt in dts]
     qoi_functions = Function[r -> r[1], r -> r[2]]
 
     make_draw(; μx = 20.0, μy = 0.0, μz = 20.0, σv = 1.0) = function ()
@@ -184,7 +186,7 @@ function projectile_wind_app(; seed::Int = 123)
     )
 
     return (
-        name = "projectile_wind",
+        name = "projectile_wind_$(n_levels)L",
         levels = levels,
         qoi_functions = qoi_functions,
         sim_draw = sim_draw,
@@ -261,7 +263,10 @@ function plot_multivariate_results(
     results,
     app_name::AbstractString;
     outdir::AbstractString = "test/plots",
-    n_bins::Int = 10,
+    n_bins::Int = 15,
+    title_prefix::AbstractString = "Multivariate",
+    save_individual::Bool = false,
+    save_data::Bool = false,
 )
     mkpath(outdir)
 
@@ -270,7 +275,7 @@ function plot_multivariate_results(
     lookup = Dict((r.variant, r.method) => r.pit for r in results)
 
     fig = Figure(size = (320 * length(methods), 240 * length(variants)), fontsize = 12)
-    Label(fig[0, :], "Multivariate: $app_name", fontsize = 18, font = :bold)
+    Label(fig[0, :], "$(title_prefix): $app_name", fontsize = 18, font = :bold)
 
     for (i, v) in enumerate(variants), (j, m) in enumerate(methods)
         ax = Axis(
@@ -280,13 +285,43 @@ function plot_multivariate_results(
             ylabel = "count",
         )
         if haskey(lookup, (v, m))
-            pit = lookup[(v, m)]
-            hist!(ax, pit; bins = n_bins, color = :mediumpurple, strokewidth = 1)
-            hlines!(ax, [length(pit) / n_bins]; color = :red, linestyle = :dash)
+            pit = filter(isfinite, lookup[(v, m)])
+            if !isempty(pit)
+                hist!(ax, pit; bins = n_bins, color = :mediumpurple, strokewidth = 1)
+                hlines!(ax, [length(pit) / n_bins]; color = :red, linestyle = :dash)
+            end
         end
     end
 
     outfile = joinpath(outdir, "multivariate_$(app_name)_rank_histograms.png")
     save(outfile, fig)
+
+    if save_individual
+        indiv_dir = joinpath(outdir, "individual")
+        mkpath(indiv_dir)
+        for (v, m) in keys(lookup)
+            pit = filter(isfinite, lookup[(v, m)])
+            isempty(pit) && continue
+            f = Figure(size = (480, 360), fontsize = 12)
+            ax = Axis(f[1, 1]; title = "$(app_name): $(v) · $(m)",
+                      xlabel = "PIT", ylabel = "count")
+            hist!(ax, pit; bins = n_bins, color = :mediumpurple, strokewidth = 1)
+            hlines!(ax, [length(pit) / n_bins]; color = :red, linestyle = :dash)
+            save(joinpath(indiv_dir, "$(v)_$(m).png"), f)
+        end
+    end
+
+    if save_data
+        data_dir = joinpath(outdir, "data")
+        mkpath(data_dir)
+        for (v, m) in keys(lookup)
+            pit = lookup[(v, m)]
+            open(joinpath(data_dir, "$(v)_$(m).csv"), "w") do io
+                println(io, "pit")
+                writedlm(io, pit)
+            end
+        end
+    end
+
     return outfile
 end

@@ -1,5 +1,6 @@
 using MultilevelMonteCarlo
 using CairoMakie
+using DelimitedFiles
 using Random
 using Statistics
 
@@ -21,6 +22,16 @@ using Statistics
 const UNIVARIATE_OBS_VARIANTS = (:matched, :under, :over, :bias)
 const UNIVARIATE_METHODS      = (:singlelevel, :gregory, :kde_cdf, :maxent_cdf)
 
+"""
+    _geomspace(a, b, n)
+
+Geometrically spaced vector of length `n` from `a` to `b`.
+"""
+function _geomspace(a::Real, b::Real, n::Integer)
+    n == 1 && return [float(a)]
+    return [a * (b / a)^((i - 1) / (n - 1)) for i in 1:n]
+end
+
 # -- applications ---------------------------------------------------------
 
 """
@@ -28,12 +39,11 @@ const UNIVARIATE_METHODS      = (:singlelevel, :gregory, :kde_cdf, :maxent_cdf)
 
 Baseline univariate app: Normal(0, 1) with three MLMC levels.
 """
-function normal_univariate_app()
-    levels = Function[
-        params -> params + 0.2 * randn(),
-        params -> params + 0.02 * randn(),
-        params -> Float64(params),
-    ]
+function normal_univariate_app(; n_levels::Integer = 3)
+    @assert n_levels >= 2
+    σs = _geomspace(0.2, 0.02, n_levels - 1)
+    levels = Function[(p -> p + σ * randn()) for σ in σs]
+    push!(levels, params -> Float64(params))
 
     qoi_function = identity
     sim_draw() = randn()  # N(0, 1)
@@ -46,7 +56,7 @@ function normal_univariate_app()
     )
 
     return (
-        name = "normal",
+        name = "normal_$(n_levels)L",
         levels = levels,
         qoi_function = qoi_function,
         sim_draw = sim_draw,
@@ -60,7 +70,8 @@ end
 Projectile-distance app: 1-D ballistic motion with level-dependent timestep.
 Parameter is initial speed v0. The QoI is the landing distance.
 """
-function projectile_univariate_app()
+function projectile_univariate_app(; n_levels::Integer = 3)
+    @assert n_levels >= 1
     g = 9.81
     θ = deg2rad(45.0)
 
@@ -85,7 +96,7 @@ function projectile_univariate_app()
         return x
     end
 
-    dts = [0.1, 0.02, 0.004]
+    dts = _geomspace(0.1, 0.004, n_levels)
     levels = Function[v0 -> simulate(v0; dt = dt) for dt in dts]
     qoi_function = identity
 
@@ -101,7 +112,7 @@ function projectile_univariate_app()
     )
 
     return (
-        name = "projectile",
+        name = "projectile_$(n_levels)L",
         levels = levels,
         qoi_function = qoi_function,
         sim_draw = sim_draw,
@@ -196,7 +207,10 @@ function plot_univariate_results(
     results,
     app_name::AbstractString;
     outdir::AbstractString = "test/plots",
-    n_bins::Int = 12,
+    n_bins::Int = 15,
+    title_prefix::AbstractString = "Univariate",
+    save_individual::Bool = false,
+    save_data::Bool = false,
 )
     mkpath(outdir)
 
@@ -205,7 +219,7 @@ function plot_univariate_results(
     lookup = Dict((r.variant, r.method) => r.pit for r in results)
 
     fig = Figure(size = (320 * length(methods), 260 * length(variants)), fontsize = 12)
-    Label(fig[0, :], "Univariate: $app_name", fontsize = 18, font = :bold)
+    Label(fig[0, :], "$(title_prefix): $app_name", fontsize = 18, font = :bold)
 
     for (i, v) in enumerate(variants), (j, m) in enumerate(methods)
         ax = Axis(
@@ -215,13 +229,43 @@ function plot_univariate_results(
             ylabel = "count",
         )
         if haskey(lookup, (v, m))
-            pit = lookup[(v, m)]
-            hist!(ax, pit; bins = n_bins, color = :steelblue, strokewidth = 1)
-            hlines!(ax, [length(pit) / n_bins]; color = :red, linestyle = :dash)
+            pit = filter(isfinite, lookup[(v, m)])
+            if !isempty(pit)
+                hist!(ax, pit; bins = n_bins, color = :steelblue, strokewidth = 1)
+                hlines!(ax, [length(pit) / n_bins]; color = :red, linestyle = :dash)
+            end
         end
     end
 
     outfile = joinpath(outdir, "univariate_$(app_name)_rank_histograms.png")
     save(outfile, fig)
+
+    if save_individual
+        indiv_dir = joinpath(outdir, "individual")
+        mkpath(indiv_dir)
+        for (v, m) in keys(lookup)
+            pit = filter(isfinite, lookup[(v, m)])
+            isempty(pit) && continue
+            f = Figure(size = (480, 360), fontsize = 12)
+            ax = Axis(f[1, 1]; title = "$(app_name): $(v) · $(m)",
+                      xlabel = "PIT", ylabel = "count")
+            hist!(ax, pit; bins = n_bins, color = :steelblue, strokewidth = 1)
+            hlines!(ax, [length(pit) / n_bins]; color = :red, linestyle = :dash)
+            save(joinpath(indiv_dir, "$(v)_$(m).png"), f)
+        end
+    end
+
+    if save_data
+        data_dir = joinpath(outdir, "data")
+        mkpath(data_dir)
+        for (v, m) in keys(lookup)
+            pit = lookup[(v, m)]
+            open(joinpath(data_dir, "$(v)_$(m).csv"), "w") do io
+                println(io, "pit")
+                writedlm(io, pit)
+            end
+        end
+    end
+
     return outfile
 end
