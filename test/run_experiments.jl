@@ -10,14 +10,14 @@ Random.seed!(1234)
 # ------------------------------------------------------------
 
 # Univariate
-const UNI_N_OBS              = 100
-const UNI_N_RESAMPLES        = 500
+const UNI_N_OBS              = 1000
+const UNI_N_RESAMPLES        = 5000
 const UNI_SAMPLES_PER_LEVEL  = [4000, 2000, 500]
 
 # Multivariate
-const MV_N_OBS               = 60
+const MV_N_OBS               = 1000
 const MV_N_RESAMPLES         = 200
-const MV_SAMPLES_PER_LEVEL   = [800, 400, 100]
+const MV_SAMPLES_PER_LEVEL   = [4000, 2000, 500]
 
 # Applications
 uni_applications = [
