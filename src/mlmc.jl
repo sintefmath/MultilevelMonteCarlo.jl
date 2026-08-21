@@ -486,6 +486,7 @@ function mlmc_estimate_adaptive(
         mlmc_print_iteration_start("Warmup", warmup_plan, warmup_plan)
     end
     for lvl in 1:n_levels
+        info_level > 1 && @info "\tLevel $lvl: drawing $(initial_samples) samples"
         accumulate_vector_samples!(_sample_body(lvl), accs[lvl], initial_samples; parallel)
         if estimate_cost
             cost_per_level[lvl] = get_mean(cost_accs[lvl])
@@ -550,6 +551,7 @@ function mlmc_estimate_adaptive(
 
         for lvl in 1:n_levels
             if needed[lvl] > 0
+                info_level > 1 && @info "\tLevel $lvl: drawing $(needed[lvl]) samples"
                 accumulate_vector_samples!(_sample_body(lvl), accs[lvl], needed[lvl]; parallel)
                 current_counts[lvl] += needed[lvl]
             end
