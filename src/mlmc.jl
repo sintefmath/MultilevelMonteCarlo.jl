@@ -330,14 +330,21 @@ function mlmc_estimate(
 end
 
 """
-    mlmc_estimate_adaptive(levels, qoi_functions, draw_parameters,
-                           cost_per_level, tolerance;
-                           variance_qoi=nothing, initial_samples=100,
-                           parallel=false, max_iterations=20)
-                           -> (estimates, samples_per_level)
+    mlmc_estimate_adaptive(levels, qoi_functions, draw_parameters, tolerance;
+                          cost_per_level=missing, variance_qoi=nothing,
+                          initial_samples=100, parallel=false,
+                          max_iterations=20) -> (estimates, samples_per_level)
 
-Adaptively compute MLMC estimates by running pilot samples, computing optimal
-allocation, and iteratively adding samples until the budget is met.
+Adaptively compute MLMC estimates by running pilot samples, computing the
+optimal allocation, and iteratively adding samples until the budget is met.
+
+The cost model is handled as follows:
+- `cost_per_level` may be either a single `missing` value or a vector of
+  real-valued costs.
+- If `cost_per_level === missing`, the level costs are estimated online from the
+  actual wall-clock time of each level evaluation, or from an explicit
+  `(output, cost)` tuple returned by the level function when available.
+- If a fixed cost vector is supplied, those values are used directly.
 
 All QoI means and the allocation variance are maintained as online accumulators,
 so new batches are merged without reprocessing earlier data.
@@ -353,10 +360,13 @@ so new batches are merged without reprocessing earlier data.
 - `levels`: Model evaluators `[L₁, …, Lₗ]`, one per fidelity level.
 - `qoi_functions`: QoI extractors `[q₁, …, qQ]`, each `q(model_output) -> scalar`.
 - `draw_parameters`: `() -> params`.
-- `cost_per_level`: Cost per sample at each level.
 - `tolerance`: Target RMSE.
 
 # Keyword Arguments
+- `cost_per_level`: Either `missing` or a length-`L` vector of positive costs.
+  If this is `missing`, all level costs are estimated adaptively during the run.
+  If a level returns `(output, cost)`, that explicit cost is used; otherwise the
+  elapsed wall-clock time for the evaluation is used.
 - `variance_qoi`: Scalar `v(model_output) -> scalar` for allocation.
   Default: `v(out) = Σᵢ qᵢ(out)²`.
 - `initial_samples::Int = 100`: Pilot samples per level (≥ 2).
@@ -371,8 +381,8 @@ function mlmc_estimate_adaptive(
     levels::AbstractVector{<:Function},
     qoi_functions::AbstractVector{<:Function},
     draw_parameters::Function,
-    cost_per_level::AbstractVector{<:Real},
     tolerance::Real;
+    cost_per_level::Union{AbstractVector{<:Real}, Missing} = missing,
     variance_qoi::Union{Function, Nothing} = nothing,
     initial_samples::Int = 100,
     parallel::Bool = false,
@@ -380,37 +390,69 @@ function mlmc_estimate_adaptive(
 )
     n_levels = length(levels)
     n_qois = length(qoi_functions)
-    @assert length(cost_per_level) == n_levels
+    @assert cost_per_level === missing || length(cost_per_level) == n_levels
     @assert tolerance > 0 "Tolerance must be positive"
     @assert initial_samples >= 2 "Need at least 2 initial samples to estimate variance"
 
+    if ismissing(cost_per_level)
+        cost_per_level = ones(Float64, n_levels)
+        estimate_cost = true
+    else
+        estimate_cost = false
+    end
+
     vqoi = something(variance_qoi, _default_variance_qoi(qoi_functions))
+
+    function _eval_level(level, params)
+        t0 = time_ns()
+        out = level(params)
+        elapsed = (time_ns() - t0) / 1e9
+        if out isa Tuple && length(out) == 2
+            out_value, explicit_cost = out
+            if explicit_cost isa Real && isfinite(Float64(explicit_cost))
+                return out_value, Float64(explicit_cost)
+            end
+        end
+        return out, elapsed
+    end
 
     # Per-level accumulators:
     #   indices 1:n_qois   → QoI values (level 1) or QoI corrections (levels 2+)
     #   index   n_qois+1   → variance_qoi value (level 1) or correction (levels 2+)
     k = n_qois + 1
     accs = [[OnlineAccumulator() for _ in 1:k] for _ in 1:n_levels]
+    if estimate_cost
+        cost_accs = [OnlineAccumulator() for _ in 1:n_levels]
+    end
 
     # Sample body for a given level (zero-allocation inner loop)
     function _sample_body(lvl)
         if lvl == 1
             return function (thread_accs)
-                out = levels[1](draw_parameters())
+                params = draw_parameters()
+                out, cost = _eval_level(levels[1], params)
                 for j in 1:n_qois
                     update!(thread_accs[j], qoi_functions[j](out))
                 end
                 update!(thread_accs[k], vqoi(out))
+                if estimate_cost
+                    update!(cost_accs[lvl], cost)
+                    cost_per_level[lvl] = get_mean(cost_accs[lvl])
+                end
             end
         else
             return function (thread_accs)
                 params = draw_parameters()
-                out_f = levels[lvl](params)
-                out_c = levels[lvl - 1](params)
+                out_f, cost_f = _eval_level(levels[lvl], params)
+                out_c, cost_c = _eval_level(levels[lvl - 1], params)
                 for j in 1:n_qois
                     update!(thread_accs[j], qoi_functions[j](out_f) - qoi_functions[j](out_c))
                 end
                 update!(thread_accs[k], vqoi(out_f) - vqoi(out_c))
+                if estimate_cost
+                    update!(cost_accs[lvl], cost_f + cost_c)
+                    cost_per_level[lvl] = get_mean(cost_accs[lvl])
+                end
             end
         end
     end
@@ -418,6 +460,9 @@ function mlmc_estimate_adaptive(
     # Pilot samples
     for lvl in 1:n_levels
         accumulate_vector_samples!(_sample_body(lvl), accs[lvl], initial_samples; parallel)
+        if estimate_cost
+            cost_per_level[lvl] = get_mean(cost_accs[lvl])
+        end
     end
     current_counts = fill(initial_samples, n_levels)
 
@@ -430,7 +475,15 @@ function mlmc_estimate_adaptive(
             variances_corrections[l - 1] = get_variance(accs[l][k])
         end
 
-        target = optimal_samples_per_level(variances_corrections, variances, cost_per_level, tolerance)
+        for lvl in 1:n_levels
+            if estimate_cost
+                if !isfinite(cost_per_level[lvl]) || cost_per_level[lvl] <= 0
+                    cost_per_level[lvl] = 1.0
+                end
+            end
+        end
+
+        target = optimal_samples_per_level(variances_corrections, variances, Float64.(cost_per_level), tolerance)
         needed = target .- current_counts
         all(n -> n <= 0, needed) && break
 
