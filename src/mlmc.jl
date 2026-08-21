@@ -330,10 +330,12 @@ function mlmc_estimate(
 end
 
 """
-    mlmc_estimate_adaptive(levels, qoi_functions, draw_parameters, tolerance;
+    mlmc_estimate_adaptive(levels, qoi_functions, draw_parameters;
+                          tolerance=missing, relative_tolerance=1e-3,
                           cost_per_level=missing, variance_qoi=nothing,
                           initial_samples=100, parallel=false,
-                          max_iterations=20) -> (estimates, samples_per_level)
+                          max_iterations=20, info_level=1)
+                          -> (estimates, samples_per_level)
 
 Adaptively compute MLMC estimates by running pilot samples, computing the
 optimal allocation, and iteratively adding samples until the budget is met.
@@ -360,18 +362,24 @@ so new batches are merged without reprocessing earlier data.
 - `levels`: Model evaluators `[L₁, …, Lₗ]`, one per fidelity level.
 - `qoi_functions`: QoI extractors `[q₁, …, qQ]`, each `q(model_output) -> scalar`.
 - `draw_parameters`: `() -> params`.
-- `tolerance`: Target RMSE.
 
 # Keyword Arguments
 - `cost_per_level`: Either `missing` or a length-`L` vector of positive costs.
   If this is `missing`, all level costs are estimated adaptively during the run.
   If a level returns `(output, cost)`, that explicit cost is used; otherwise the
   elapsed wall-clock time for the evaluation is used.
+- `tolerance`: Absolute target RMSE. If provided, this is used directly.
+- `relative_tolerance`: Relative target RMSE, used only when `tolerance` is
+    `missing`. The effective tolerance is computed after warmup as
+    `relative_tolerance * qoi_after_warmup`, where `qoi_after_warmup` is
+    `abs(Q)` for a single QoI and `norm(Q)` for multiple QoIs.
 - `variance_qoi`: Scalar `v(model_output) -> scalar` for allocation.
   Default: `v(out) = Σᵢ qᵢ(out)²`.
 - `initial_samples::Int = 100`: Pilot samples per level (≥ 2).
 - `parallel::Bool = false`: Thread samples within each level.
 - `max_iterations::Int = 20`: Safety limit on refinement iterations.
+- `info_level::Int = 1`: Print MLMC progress summaries when `> 0`, including
+    warmup and per-iteration statistics.
 
 # Returns
 `(estimates, samples_per_level)` where `estimates::Vector{Float64}` has length
@@ -380,19 +388,28 @@ so new batches are merged without reprocessing earlier data.
 function mlmc_estimate_adaptive(
     levels::AbstractVector{<:Function},
     qoi_functions::AbstractVector{<:Function},
-    draw_parameters::Function,
-    tolerance::Real;
+    draw_parameters::Function;
+    relative_tolerance::Union{Real, Missing} = 1e-2,
+    tolerance::Union{Real, Missing} = missing,
     cost_per_level::Union{AbstractVector{<:Real}, Missing} = missing,
     variance_qoi::Union{Function, Nothing} = nothing,
     initial_samples::Int = 100,
     parallel::Bool = false,
     max_iterations::Int = 20,
+    info_level::Int = 1,
 )
     n_levels = length(levels)
     n_qois = length(qoi_functions)
     @assert cost_per_level === missing || length(cost_per_level) == n_levels
-    @assert tolerance > 0 "Tolerance must be positive"
+    @assert !ismissing(tolerance) || !ismissing(relative_tolerance) "Either tolerance or relative_tolerance must be provided"
+    if !ismissing(tolerance)
+        @assert tolerance > 0 "Tolerance must be positive"
+    end
+    if !ismissing(relative_tolerance)
+        @assert relative_tolerance > 0 "relative_tolerance must be positive"
+    end
     @assert initial_samples >= 2 "Need at least 2 initial samples to estimate variance"
+    @assert info_level >= 0 "info_level must be non-negative"
 
     if ismissing(cost_per_level)
         cost_per_level = ones(Float64, n_levels)
@@ -457,7 +474,10 @@ function mlmc_estimate_adaptive(
         end
     end
 
-    # Pilot samples
+    # Warmup samples
+    if info_level > 0
+        mlmc_print_iteration_start("Warmup", fill(initial_samples, n_levels))
+    end
     for lvl in 1:n_levels
         accumulate_vector_samples!(_sample_body(lvl), accs[lvl], initial_samples; parallel)
         if estimate_cost
@@ -466,8 +486,24 @@ function mlmc_estimate_adaptive(
     end
     current_counts = fill(initial_samples, n_levels)
 
+    warmup_estimate = [sum(get_mean(accs[lvl][j]) for lvl in 1:n_levels) for j in 1:n_qois]
+    qoi_after_warmup = n_qois == 1 ? abs(warmup_estimate[1]) : sqrt(sum(abs2, warmup_estimate))
+    qoi_scale = max(qoi_after_warmup, eps(Float64))
+    effective_tolerance = ismissing(tolerance) ? Float64(relative_tolerance) * qoi_scale : Float64(tolerance)
+
+    if info_level > 0
+        variances_warmup = zeros(Float64, n_levels)
+        variances_warmup[1] = get_variance(accs[1][k])
+        for l in 2:n_levels
+            variances_warmup[l] = get_variance(accs[l][k])
+        end
+        mlmc_print_iteration_summary("Warmup", current_counts, Float64.(cost_per_level), accs, n_qois, zeros(Int, n_levels), variances_warmup)
+        println("Warmup QoI scale: $(qoi_after_warmup)")
+        println("Effective tolerance: $(effective_tolerance)")
+    end
+
     # Iterative refinement
-    for _ in 1:max_iterations
+    for iter in 1:max_iterations
         variances = zeros(Float64, n_levels)
         variances_corrections = zeros(Float64, max(n_levels - 1, 0))
         variances[1] = get_variance(accs[1][k])
@@ -483,8 +519,13 @@ function mlmc_estimate_adaptive(
             end
         end
 
-        target = optimal_samples_per_level(variances_corrections, variances, Float64.(cost_per_level), tolerance)
+        target = optimal_samples_per_level(variances_corrections, variances, Float64.(cost_per_level), effective_tolerance)
         needed = target .- current_counts
+
+        if info_level > 0
+            mlmc_print_iteration_start(iter, needed)
+        end
+
         all(n -> n <= 0, needed) && break
 
         for lvl in 1:n_levels
@@ -492,6 +533,15 @@ function mlmc_estimate_adaptive(
                 accumulate_vector_samples!(_sample_body(lvl), accs[lvl], needed[lvl]; parallel)
                 current_counts[lvl] += needed[lvl]
             end
+        end
+
+        if info_level > 0
+            variances_now = zeros(Float64, n_levels)
+            variances_now[1] = get_variance(accs[1][k])
+            for l in 2:n_levels
+                variances_now[l] = get_variance(accs[l][k])
+            end
+            mlmc_print_iteration_summary(iter, current_counts, Float64.(cost_per_level), accs, n_qois, needed, variances_now)
         end
     end
 
@@ -792,6 +842,7 @@ end
 
 import Statistics: mean
 
+import PrettyTables
 import NCDatasets
 
 function _write_mlmc_samples_netcdf(samples::MLMCSamples, path::String)
