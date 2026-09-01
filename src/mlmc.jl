@@ -402,6 +402,7 @@ function mlmc_estimate_adaptive(
     initial_samples::Int = 100,
     parallel::Bool = false,
     max_iterations::Int = 20,
+    iteration_cost_limit::Union{Real, Missing} = 1,
     info_level::Int = 1,
 )
     n_levels = length(levels)
@@ -509,12 +510,13 @@ function mlmc_estimate_adaptive(
             zeros(Int, n_levels),
             zeros(Int, n_levels),
         )
-        println("Warmup QoI scale: $(qoi_after_warmup)")
-        println("Effective tolerance: $(effective_tolerance)")
     end
 
     # Iterative refinement
+    converged = false
+    completed_iterations = 0
     for iter in 1:max_iterations
+        completed_iterations = iter
         variances = zeros(Float64, n_levels)
         variances_corrections = zeros(Float64, max(n_levels - 1, 0))
         variances[1] = get_variance(accs[1][k])
@@ -535,11 +537,10 @@ function mlmc_estimate_adaptive(
         needed = copy(requested)
 
         # Cap per-level new work so each level adds at most 10% of total work so far.
-        total_cost_so_far = sum(current_counts[lvl] * Float64(cost_per_level[lvl]) for lvl in 1:n_levels)
-        cost_budget_per_level = 0.1 * total_cost_so_far
+        max_cost = cost_per_level[end]*iteration_cost_limit
         for lvl in 1:n_levels
             level_cost = max(Float64(cost_per_level[lvl]), eps(Float64))
-            max_new = max(1, floor(Int, cost_budget_per_level / level_cost))
+            max_new = max(1, floor(Int, max_cost / level_cost))
             needed[lvl] = clamp(needed[lvl], 0, max_new)
         end
 
@@ -547,7 +548,10 @@ function mlmc_estimate_adaptive(
             mlmc_print_iteration_start(iter, requested, needed)
         end
 
-        all(n -> n <= 0, needed) && break
+        if all(n -> n <= 0, needed)
+            converged = true
+            break
+        end
 
         for lvl in 1:n_levels
             if needed[lvl] > 0
@@ -558,8 +562,28 @@ function mlmc_estimate_adaptive(
         end
 
         if info_level > 0
-            mlmc_print_iteration_summary(iter, current_counts, Float64.(cost_per_level), accs, n_qois, requested, needed)
+            mlmc_print_iteration_summary("Iteration $iter", current_counts, Float64.(cost_per_level), accs, n_qois, requested, needed)
         end
+    end
+
+    if info_level > 0
+        mlmc_print_iteration_summary(
+            "Final",
+            current_counts,
+            Float64.(cost_per_level),
+            accs,
+            n_qois,
+            zeros(Int, n_levels),
+            zeros(Int, n_levels),
+        )
+        mlmc_print_final_statistics(
+            current_counts,
+            Float64.(cost_per_level),
+            effective_tolerance,
+            qoi_after_warmup,
+            completed_iterations,
+            converged,
+        )
     end
 
     # Final estimates from accumulated QoI means
