@@ -14,7 +14,7 @@ function mlmc_print_iteration_start(
 )
     req = max.(requested, 0)
     plan = max.(capped, 0)
-    println("MLMC $(label): requested $(req), running $(plan) additional samples at levels $(1:length(plan))")
+    @info "MLMC $(label): requested $(req), running $(plan) additional samples at levels $(1:length(plan))"
 end
 
 """
@@ -63,10 +63,12 @@ function mlmc_print_iteration_summary(
     end
 
     println("\nMLMC $(label) summary")
+    println()
+    println("Level details")
     PrettyTables.pretty_table(
         stdout,
         summary;
-        column_labels = ["Level", "N", "Cost", "Level QoI", "Level variance", "Requested", "Running"],
+        column_labels = ["Level", "N", "Cost", "Level QoI", "Level variance", "Requested", "Ran"],
         alignment = :l,
         fit_table_in_display_horizontally = false,
         fit_table_in_display_vertically = false,
@@ -91,4 +93,48 @@ function mlmc_print_iteration_summary(
         fit_table_in_display_horizontally = false,
         fit_table_in_display_vertically = false,
     )
+    println()
+end
+
+"""
+    mlmc_print_final_statistics(current_counts, cost_values, effective_tolerance,
+                                qoi_after_warmup, completed_iterations, converged)
+
+Print aggregate MLMC statistics at the end of an adaptive run.
+"""
+function mlmc_print_final_statistics(
+    current_counts::AbstractVector{<:Integer},
+    cost_values::AbstractVector{<:Real},
+    effective_tolerance::Real,
+    qoi_after_warmup::Real,
+    completed_iterations::Integer,
+    converged::Bool,
+)
+    n_levels = length(current_counts)
+    level_total_cost = [current_counts[lvl] * cost_values[lvl] for lvl in 1:n_levels]
+    total_cost = sum(level_total_cost)
+
+    summary = Matrix{Any}(undef, n_levels, 4)
+    for lvl in 1:n_levels
+        summary[lvl, 1] = lvl
+        summary[lvl, 2] = current_counts[lvl]
+        summary[lvl, 3] = cost_values[lvl]
+        summary[lvl, 4] = level_total_cost[lvl]
+    end
+
+    println("Final MLMC statistics")
+    PrettyTables.pretty_table(
+        stdout,
+        summary;
+        column_labels = ["Level", "Total N", "Cost/sample", "Accumulated cost"],
+        alignment = :l,
+        fit_table_in_display_horizontally = false,
+        fit_table_in_display_vertically = false,
+    )
+    println("Completed iterations: $(completed_iterations)")
+    println("Converged: $(converged)")
+    println("Warmup QoI scale: $(qoi_after_warmup)")
+    println("Effective tolerance: $(effective_tolerance)")
+    println("Total accumulated cost: $(total_cost)")
+    println()
 end
