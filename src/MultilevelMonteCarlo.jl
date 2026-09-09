@@ -2,6 +2,7 @@ module MultilevelMonteCarlo
 
 using Statistics: std, mean
 
+include("utils.jl")
 include("mlmc.jl")
 include("pdf.jl")
 include("rank_histograms.jl")
